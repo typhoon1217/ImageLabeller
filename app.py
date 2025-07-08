@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 
+import os
+# Disable hardware acceleration to prevent GL context issues
+os.environ['GDK_RENDERING'] = 'cairo'
+os.environ['GSK_RENDERER'] = 'cairo'
+os.environ['GDK_GL'] = '0'
+os.environ['GSK_DEBUG'] = 'cairo'
+
 import gi
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk

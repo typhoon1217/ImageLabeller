@@ -15,6 +15,13 @@ class ImageCanvas(Gtk.DrawingArea):
         self.set_hexpand(True)
         self.set_vexpand(True)
         self.set_can_focus(True)
+        
+        # Force cairo rendering for stability
+        try:
+            # Disable GL rendering on this widget
+            self.set_name("software-rendered-canvas")
+        except:
+            pass
 
         self.class_config = class_config
 
@@ -145,46 +152,52 @@ class ImageCanvas(Gtk.DrawingArea):
         self.queue_draw()
 
     def on_draw(self, area, cr, width, height, user_data=None):
-        cr.set_source_rgb(0.2, 0.2, 0.2)
-        cr.paint()
+        try:
+            cr.set_source_rgb(0.2, 0.2, 0.2)
+            cr.paint()
 
-        if not self.pixbuf:
+            if not self.pixbuf:
+                return
+
+            scaled_width = self.pixbuf.get_width() * self.scale_factor
+            scaled_height = self.pixbuf.get_height() * self.scale_factor
+
+            cr.save()
+            cr.translate(self.offset_x, self.offset_y)
+            cr.scale(self.scale_factor, self.scale_factor)
+            Gdk.cairo_set_source_pixbuf(cr, self.pixbuf, 0, 0)
+            cr.paint()
+            cr.restore()
+        except Exception as e:
+            print(f"Draw error (image): {e}")
+            cr.restore()
             return
 
-        scaled_width = self.pixbuf.get_width() * self.scale_factor
-        scaled_height = self.pixbuf.get_height() * self.scale_factor
+        try:
+            for box in self.boxes:
+                canvas_x, canvas_y = self.image_to_canvas(box.x, box.y)
+                canvas_width = box.width * self.scale_factor
+                canvas_height = box.height * self.scale_factor
 
-        cr.save()
-        cr.translate(self.offset_x, self.offset_y)
-        cr.scale(self.scale_factor, self.scale_factor)
-        Gdk.cairo_set_source_pixbuf(cr, self.pixbuf, 0, 0)
-        cr.paint()
-        cr.restore()
+                if box.selected:
+                    cr.set_source_rgba(1.0, 0.0, 0.0, 0.3)  # Red for selected
+                    cr.set_line_width(3.0)
+                else:
+                    color = self.get_class_color(box.class_id)
+                    cr.set_source_rgba(color[0], color[1], color[2], 0.3)
+                    cr.set_line_width(2.0)
 
-        for box in self.boxes:
-            canvas_x, canvas_y = self.image_to_canvas(box.x, box.y)
-            canvas_width = box.width * self.scale_factor
-            canvas_height = box.height * self.scale_factor
+                cr.rectangle(canvas_x, canvas_y, canvas_width, canvas_height)
+                cr.stroke()
 
-            if box.selected:
-                cr.set_source_rgba(1.0, 0.0, 0.0, 0.3)  # Red for selected
-                cr.set_line_width(3.0)
-            else:
-                color = self.get_class_color(box.class_id)
-                cr.set_source_rgba(color[0], color[1], color[2], 0.3)
-                cr.set_line_width(2.0)
+                show_labels = True
+                if self.is_text_editing_active and callable(self.is_text_editing_active):
+                    show_labels = not self.is_text_editing_active()
 
-            cr.rectangle(canvas_x, canvas_y, canvas_width, canvas_height)
-            cr.stroke()
-
-            show_labels = True
-            if self.is_text_editing_active and callable(self.is_text_editing_active):
-                show_labels = not self.is_text_editing_active()
-
-            if show_labels:
-                cr.set_source_rgb(1.0, 1.0, 1.0)
-                cr.select_font_face("Sans", 0, 0)
-                cr.set_font_size(11)
+                if show_labels:
+                    cr.set_source_rgb(1.0, 1.0, 1.0)
+                    cr.select_font_face("Sans", 0, 0)
+                    cr.set_font_size(11)
 
                 ocr_display = box.ocr_text[:30] + "..." if len(box.ocr_text) > 30 else box.ocr_text
                 label_text = f"{box.name}: {ocr_display}"
@@ -226,6 +239,8 @@ class ImageCanvas(Gtk.DrawingArea):
                     cr.rectangle(hx - handle_size/2, hy -
                                  handle_size/2, handle_size, handle_size)
                     cr.fill()
+        except Exception as e:
+            print(f"Draw error (boxes): {e}")
 
     def on_click_pressed(self, gesture, n_press, x, y):
         self.grab_focus()

@@ -63,6 +63,9 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         
         # Content area
         content_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        content_box.set_hexpand(True)
+        content_box.set_vexpand(True)
+        content_box.set_spacing(5)
         main_box.append(content_box)
         
         # Left sidebar - file list
@@ -128,6 +131,8 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         """Create file list sidebar"""
         sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         sidebar.set_size_request(250, -1)
+        sidebar.set_hexpand(False)
+        sidebar.set_vexpand(True)
         
         # Title
         title = Gtk.Label()
@@ -159,6 +164,9 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         self.dir_stats = Gtk.Label()
         self.dir_stats.set_text("No directory loaded")
         self.dir_stats.set_wrap(True)
+        self.dir_stats.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        self.dir_stats.set_valign(Gtk.Align.START)
+        self.dir_stats.set_max_width_chars(35)
         self.dir_stats.set_margin_start(10)
         self.dir_stats.set_margin_end(10)
         self.dir_stats.set_margin_top(10)
@@ -198,6 +206,8 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         nav_toolbar.set_margin_end(10)
         nav_toolbar.set_margin_top(10)
         nav_toolbar.set_margin_bottom(10)
+        nav_toolbar.set_hexpand(True)
+        nav_toolbar.set_homogeneous(False)
         
         # Navigation buttons
         self.prev_button = Gtk.Button(label="◀ Previous")
@@ -247,6 +257,8 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         """Create label editor sidebar"""
         sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         sidebar.set_size_request(300, -1)
+        sidebar.set_hexpand(False)
+        sidebar.set_vexpand(True)
         
         # Title
         title = Gtk.Label()
@@ -259,6 +271,9 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         self.file_info = Gtk.Label()
         self.file_info.set_text("No file loaded")
         self.file_info.set_wrap(True)
+        self.file_info.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        self.file_info.set_valign(Gtk.Align.START)
+        self.file_info.set_max_width_chars(40)
         self.file_info.set_margin_start(10)
         self.file_info.set_margin_end(10)
         sidebar.append(self.file_info)
@@ -280,6 +295,10 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         self.ocr_count_label.set_margin_end(10)
         self.ocr_count_label.set_margin_top(10)
         self.ocr_count_label.set_use_markup(True)
+        self.ocr_count_label.set_wrap(True)
+        self.ocr_count_label.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        self.ocr_count_label.set_valign(Gtk.Align.START)
+        self.ocr_count_label.set_max_width_chars(40)
         sidebar.append(self.ocr_count_label)
         
         # Another separator
@@ -328,6 +347,10 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         self.selected_info.set_margin_start(10)
         self.selected_info.set_margin_end(10)
         self.selected_info.set_halign(Gtk.Align.START)
+        self.selected_info.set_valign(Gtk.Align.START)
+        self.selected_info.set_wrap(True)
+        self.selected_info.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        self.selected_info.set_max_width_chars(40)
         sidebar.append(self.selected_info)
         
         # OCR text editor
@@ -439,6 +462,11 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         .file-missing-classes { color: #ef4444; font-weight: bold; }
         .file-invalid-regex { color: #dc2626; }
         .file-error { color: #991b1b; font-style: italic; }
+        
+        /* Force software rendering to avoid GL context issues */
+        #software-rendered-canvas {
+            background-color: inherit;
+        }
         """
         css_provider.load_from_string(css)
         
