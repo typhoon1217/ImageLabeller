@@ -163,8 +163,12 @@ class EventHandlerMixin:
         if hasattr(self, 'file_list_data') and self.file_list_data:
             # Find the file info for this item
             position = list_item.get_position()
-            if position < len(self.file_list_data):
-                file_info = self.file_list_data[position]
+            
+            # Use filtered list if available, otherwise use full list
+            display_files = self._filtered_file_list if hasattr(self, '_filtered_file_list') and self._filtered_file_list is not None else self.file_list_data
+            
+            if position < len(display_files):
+                file_info = display_files[position]
                 validation_status = file_info.get('validation_status', 'normal')
                 
                 # Check if file is confirmed
@@ -214,15 +218,30 @@ class EventHandlerMixin:
             return
         selected = selection.get_selected()
         if (selected != Gtk.INVALID_LIST_POSITION and 
-            hasattr(self, 'project_manager') and 
-            selected < len(self.project_manager.image_files)):
-            if selected != self.project_manager.current_index:
-                self.auto_save_current()
-                if self.project_manager.navigate_to_image(selected):
-                    self.load_current_image()
-                    # Ensure canvas gets focus for immediate interaction
-                    if hasattr(self, 'canvas'):
-                        self.canvas.grab_focus()
+            hasattr(self, 'project_manager')):
+            
+            # Use filtered list if available, otherwise use full list
+            display_files = self._filtered_file_list if hasattr(self, '_filtered_file_list') and self._filtered_file_list is not None else self.file_list_data
+            
+            if selected < len(display_files):
+                # Get the actual file path from the selected item
+                file_info = display_files[selected]
+                file_path = file_info.get('path', '')
+                
+                # Find the index in the original file list
+                original_index = -1
+                for i, original_file in enumerate(self.project_manager.image_files):
+                    if str(original_file) == file_path:
+                        original_index = i
+                        break
+                
+                if original_index != -1 and original_index != self.project_manager.current_index:
+                    self.auto_save_current()
+                    if self.project_manager.navigate_to_image(original_index):
+                        self.load_current_image()
+                        # Ensure canvas gets focus for immediate interaction
+                        if hasattr(self, 'canvas'):
+                            self.canvas.grab_focus()
     
     # Menu action handlers
     def on_open_directory(self, action, param):
