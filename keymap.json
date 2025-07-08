@@ -1,0 +1,47 @@
+{
+  "// MRZ Label Editor Keyboard Shortcuts Configuration": "Edit this file to customize keyboard shortcuts",
+  "navigation": {
+    "previous_image": ["a", "Left", "BackSpace"],
+    "next_image": ["d", "Right", "space"]
+  },
+  "label_selection": {
+    "focus_label_1": ["1"],
+    "focus_label_2": ["2"],
+    "focus_label_3": ["3"],
+    "focus_label_4": ["4"],
+    "focus_label_5": ["5"],
+    "focus_label_6": ["6"],
+    "focus_label_7": ["7"],
+    "focus_label_8": ["8"],
+    "focus_label_9": ["9"],
+    "focus_label_10": ["0"]
+  },
+  "editing": {
+    "toggle_confirmation": ["Return", "KP_Enter", "c"],
+    "delete_selected": ["Delete"],
+    "select_next_label": ["Tab"],
+    "exit_editing": ["Escape"],
+    "focus_ocr_textbox": ["x"],
+    "run_ocr": ["z"]
+  },
+  "label_adjustment": {
+    "move_up": ["w"],
+    "move_left": ["q"],
+    "move_down": ["s"],
+    "move_right": ["e"],
+    "resize_width_decrease": ["r"],
+    "resize_width_increase": ["t"],
+    "resize_height_decrease": ["f"],
+    "resize_height_increase": ["g"]
+  },
+  "system": {
+    "save": ["Ctrl+s"],
+    "open_directory": ["Ctrl+o"],
+    "next_image_ctrl": ["Ctrl+n"],
+    "previous_image_ctrl": ["Ctrl+p"],
+    "show_help": ["h", "F1"],
+    "zoom_in": ["plus", "equal", "b"],
+    "zoom_out": ["minus", "v"],
+    "reset_zoom": ["n"]
+  }
+}

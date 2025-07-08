@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 from ..business.label_logic import LabelManager, OCRProcessor
 from ..business.project_state import ProjectManager
+from ..core.keymap import KeymapManager
 
 
 class EventHandlerMixin:
@@ -15,6 +16,14 @@ class EventHandlerMixin:
     
     def setup_event_handlers(self):
         """Initialize event handlers"""
+        # Initialize keymap manager
+        try:
+            self.keymap_manager = KeymapManager()
+        except Exception as e:
+            print(f"Error initializing keymap: {e}")
+            print("Please ensure keymap.json exists in the project root directory")
+            raise
+        
         # Setup global key bindings
         self.key_controller = Gtk.EventControllerKey()
         self.key_controller.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
@@ -316,7 +325,7 @@ class EventHandlerMixin:
     
     # Keyboard handlers
     def on_window_key_pressed(self, controller, keyval, keycode, state):
-        """Handle global key press events"""
+        """Handle global key press events using keymap configuration"""
         focused_widget = self.get_focus()
         
         is_text_editing = (focused_widget and
@@ -324,6 +333,10 @@ class EventHandlerMixin:
                            isinstance(focused_widget, Gtk.Entry) or
                            isinstance(focused_widget, Gtk.TextView)))
         
+        # Get action from keymap
+        action = self.keymap_manager.get_action_for_key(keyval, state)
+        
+        # Handle escape key specially
         if keyval == Gdk.KEY_Escape:
             if is_text_editing:
                 self.set_focus(None)
@@ -333,65 +346,147 @@ class EventHandlerMixin:
             else:
                 return False
         
+        # Allow certain shortcuts even while text editing
         if is_text_editing:
             ctrl_pressed = (state & Gdk.ModifierType.CONTROL_MASK) != 0
-            if ctrl_pressed and keyval in [Gdk.KEY_s, Gdk.KEY_o, Gdk.KEY_q]:
+            if ctrl_pressed and keyval in [Gdk.KEY_s, Gdk.KEY_o]:
                 pass  # Will be handled below
             else:
                 return False
         
-        ctrl_pressed = (state & Gdk.ModifierType.CONTROL_MASK) != 0
-        
-        if ctrl_pressed:
-            if keyval == Gdk.KEY_s:
+        # Handle actions from keymap
+        if action:
+            if action == "navigation.previous_image":
+                if hasattr(self, 'prev_button') and self.prev_button.get_sensitive():
+                    self.on_prev_clicked(None)
+                return True
+            elif action == "navigation.next_image":
+                if hasattr(self, 'next_button') and self.next_button.get_sensitive():
+                    self.on_next_clicked(None)
+                return True
+            elif action == "system.save":
                 self.on_save(None, None)
                 return True
-            elif keyval == Gdk.KEY_o:
+            elif action == "system.open_directory":
                 self.on_open_directory(None, None)
                 return True
-            elif keyval == Gdk.KEY_n:
+            elif action == "system.next_image_ctrl":
                 if hasattr(self, 'next_button') and self.next_button.get_sensitive():
                     self.on_next_clicked(None)
                 return True
-            elif keyval == Gdk.KEY_p:
+            elif action == "system.previous_image_ctrl":
                 if hasattr(self, 'prev_button') and self.prev_button.get_sensitive():
                     self.on_prev_clicked(None)
                 return True
-        else:
-            if keyval == Gdk.KEY_Left:
-                if hasattr(self, 'prev_button') and self.prev_button.get_sensitive():
-                    self.on_prev_clicked(None)
-                    # Focus is already set in on_prev_clicked
+            elif action == "system.show_help":
+                self.show_help_dialog()
                 return True
-            elif keyval == Gdk.KEY_Right:
-                if hasattr(self, 'next_button') and self.next_button.get_sensitive():
-                    self.on_next_clicked(None)
-                    # Focus is already set in on_next_clicked
-                return True
-            elif keyval == Gdk.KEY_space:
-                if hasattr(self, 'next_button') and self.next_button.get_sensitive():
-                    self.on_next_clicked(None)
-                    # Focus is already set in on_next_clicked
-                return True
-            elif keyval == Gdk.KEY_BackSpace:
-                if hasattr(self, 'prev_button') and self.prev_button.get_sensitive():
-                    self.on_prev_clicked(None)
-                    # Focus is already set in on_prev_clicked
-                return True
-            elif keyval == Gdk.KEY_f:
+            elif action == "system.reset_zoom":
                 if hasattr(self, 'canvas'):
                     self.canvas.reset_zoom()
                     self.update_navigation_buttons()
                 return True
-            elif keyval == Gdk.KEY_h or keyval == Gdk.KEY_F1:
-                self.show_help_dialog()
+            elif action == "system.zoom_in":
+                if hasattr(self, 'canvas'):
+                    self.canvas.zoom_in()
+                    self.update_navigation_buttons()
                 return True
-            # Removed U key shortcut - using simple next image navigation
-            elif keyval == Gdk.KEY_Return or keyval == Gdk.KEY_KP_Enter:
+            elif action == "system.zoom_out":
+                if hasattr(self, 'canvas'):
+                    self.canvas.zoom_out()
+                    self.update_navigation_buttons()
+                return True
+            elif action == "editing.toggle_confirmation":
                 self.toggle_confirmation()
                 return True
+            elif action == "editing.focus_ocr_textbox":
+                self.focus_ocr_textbox()
+                return True
+            elif action == "editing.run_ocr":
+                if hasattr(self, 'ocr_button'):
+                    self.on_ocr_clicked(self.ocr_button)
+                return True
+            elif action.startswith("label_selection.focus_label_"):
+                # Extract label number from action
+                label_num = action.split("_")[-1]
+                try:
+                    if label_num == "10":  # Special case for 0 key -> label 10
+                        label_index = 9  # 0-based index for 10th label
+                    else:
+                        label_index = int(label_num) - 1  # Convert to 0-based index
+                    self.focus_label_by_index(label_index)
+                    return True
+                except ValueError:
+                    pass
+            elif action.startswith("label_adjustment."):
+                # Handle label adjustment actions
+                if hasattr(self, 'canvas') and self.canvas.selected_box:
+                    self.handle_label_adjustment(action)
+                    return True
         
         return False
+    
+    def focus_label_by_index(self, label_index: int):
+        """Focus on a specific label by index (0-based)"""
+        if not hasattr(self, 'canvas') or not self.canvas.boxes:
+            return
+        
+        if 0 <= label_index < len(self.canvas.boxes):
+            # Sort boxes by class_id to match visual order
+            sorted_boxes = sorted(self.canvas.boxes, key=lambda b: b.class_id)
+            
+            if label_index < len(sorted_boxes):
+                target_box = sorted_boxes[label_index]
+                
+                # Deselect current box
+                if self.canvas.selected_box:
+                    self.canvas.selected_box.selected = False
+                
+                # Select target box
+                target_box.selected = True
+                self.canvas.selected_box = target_box
+                
+                # Update UI
+                self.on_box_selected(target_box)
+                self.canvas.queue_draw()
+                
+                # Ensure canvas has focus
+                self.canvas.grab_focus()
+    
+    def focus_ocr_textbox(self):
+        """Focus on the OCR text box for editing"""
+        if hasattr(self, 'ocr_text') and hasattr(self, 'canvas') and self.canvas.selected_box:
+            self.ocr_text.grab_focus()
+    
+    def handle_label_adjustment(self, action: str):
+        """Handle label position and size adjustment"""
+        if not hasattr(self, 'canvas') or not self.canvas.selected_box:
+            return
+        
+        box = self.canvas.selected_box
+        adjustment_step = 5  # pixels for movement
+        resize_step = 5      # pixels for resizing
+        
+        if action == "label_adjustment.move_up":
+            box.y = max(0, box.y - adjustment_step)
+        elif action == "label_adjustment.move_down":
+            box.y += adjustment_step
+        elif action == "label_adjustment.move_left":
+            box.x = max(0, box.x - adjustment_step)
+        elif action == "label_adjustment.move_right":
+            box.x += adjustment_step
+        elif action == "label_adjustment.resize_width_decrease":
+            box.width = max(10, box.width - resize_step)
+        elif action == "label_adjustment.resize_width_increase":
+            box.width += resize_step
+        elif action == "label_adjustment.resize_height_decrease":
+            box.height = max(10, box.height - resize_step)
+        elif action == "label_adjustment.resize_height_increase":
+            box.height += resize_step
+        
+        # Update UI
+        self.on_boxes_changed()
+        self.canvas.queue_draw()
     
     # Window event handlers
     def on_size_changed(self, window, param):
@@ -463,14 +558,22 @@ Replace current text with extracted text?"""
         )
         
         help_text = """Navigation:
-• ←→ / Space/Backspace - Previous/Next image
-• Ctrl+N/P - Next/Previous image
+• A/D or ←→ or Space/Backspace - Previous/Next image
+• Ctrl+N/P - Next/Previous image (alternative)
 
 Label Editing:
 • Tab - Select next label
-• 1/2 - Set label class to mrz1/mrz2
+• 1-9, 0 - Focus on label N (by class order, 0=label 10)
+• X - Focus OCR text box for editing
+• Z - Run OCR on selected label
 • Delete - Delete selected label
 • Esc - Exit text editing / Deselect all labels
+
+Label Adjustment (when selected):
+• W/S - Move label up/down
+• Q/E - Move label left/right
+• R/T - Decrease/increase width
+• F/G - Decrease/increase height
 
 Text Editing:
 • Global shortcuts work everywhere except when typing in text boxes
@@ -478,12 +581,11 @@ Text Editing:
 • Ctrl+S/O - Work even when typing in text boxes
 
 Confirmation:
-• Enter - Toggle confirmation status (when confirming: go to next image)
+• Enter or C - Toggle confirmation status (when confirming: go to next image)
 
 Zoom & View:
-• +/- - Zoom in/out
-• 0 - Reset zoom (fit to window)
-• F - Fit to window
+• +/- or B/V - Zoom in/out
+• N - Reset zoom (fit to window)
 • Scroll wheel - Zoom in/out
 • Middle click + drag - Pan image
 
@@ -493,7 +595,10 @@ File Operations:
 • Labels are auto-saved automatically
 
 Help:
-• H / F1 - Show this help"""
+• H / F1 - Show this help
+
+Configuration:
+• Keyboard shortcuts are configurable in keymap.json"""
         
         dialog.set_property("secondary-text", help_text)
         dialog.connect('response', lambda d, r: d.destroy())
