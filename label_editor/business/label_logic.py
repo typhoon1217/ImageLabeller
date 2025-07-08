@@ -152,7 +152,7 @@ class LabelManager:
             self.on_boxes_changed()
     
     def get_ocr_character_counts(self) -> Dict[str, int]:
-        """Get character counts for OCR text by class"""
+        """Get character counts for OCR text by class (deprecated - table now handled in UI)"""
         counts = {}
         for box in self.boxes:
             class_name = self.get_class_name(box.class_id)

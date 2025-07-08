@@ -324,57 +324,17 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
     
     def _add_ocr_counts_table(self, sidebar):
         """Add OCR character counts table"""
-        # Title
-        ocr_title = Gtk.Label()
-        ocr_title.set_markup("<b>OCR Character Counts</b>")
-        ocr_title.set_halign(Gtk.Align.START)
-        ocr_title.set_margin_start(10)
-        ocr_title.set_margin_top(10)
-        sidebar.append(ocr_title)
-        
-        # Create scrolled window for the table
-        scrolled_counts = Gtk.ScrolledWindow()
-        scrolled_counts.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scrolled_counts.set_size_request(-1, 100)
-        scrolled_counts.set_margin_start(10)
-        scrolled_counts.set_margin_end(10)
-        scrolled_counts.set_margin_top(5)
-        
-        # Create grid for table layout
-        self.ocr_counts_grid = Gtk.Grid()
-        self.ocr_counts_grid.set_column_spacing(10)
-        self.ocr_counts_grid.set_row_spacing(2)
-        self.ocr_counts_grid.set_margin_start(5)
-        self.ocr_counts_grid.set_margin_end(5)
-        self.ocr_counts_grid.set_margin_top(5)
-        self.ocr_counts_grid.set_margin_bottom(5)
-        
-        # Add headers
-        class_header = Gtk.Label()
-        class_header.set_markup("<b>Class</b>")
-        class_header.set_halign(Gtk.Align.START)
-        self.ocr_counts_grid.attach(class_header, 0, 0, 1, 1)
-        
-        count_header = Gtk.Label()
-        count_header.set_markup("<b>Count</b>")
-        count_header.set_halign(Gtk.Align.END)
-        self.ocr_counts_grid.attach(count_header, 1, 0, 1, 1)
-        
-        # Add separator row
-        separator_line = Gtk.Separator()
-        separator_line.set_margin_top(2)
-        separator_line.set_margin_bottom(2)
-        self.ocr_counts_grid.attach(separator_line, 0, 1, 2, 1)
-        
-        # Add "No labels" row initially
-        no_labels = Gtk.Label()
-        no_labels.set_text("No labels")
-        no_labels.set_halign(Gtk.Align.START)
-        no_labels.add_css_class("dim-label")
-        self.ocr_counts_grid.attach(no_labels, 0, 2, 2, 1)
-        
-        scrolled_counts.set_child(self.ocr_counts_grid)
-        sidebar.append(scrolled_counts)
+        # OCR Character Count Display - using label like original
+        self.ocr_count_label = Gtk.Label()
+        self.ocr_count_label.set_markup(
+            "<b>OCR Character Counts</b>\n<small>No labels</small>")
+        self.ocr_count_label.set_halign(Gtk.Align.START)
+        self.ocr_count_label.set_margin_start(10)
+        self.ocr_count_label.set_margin_end(10)
+        self.ocr_count_label.set_margin_top(10)
+        self.ocr_count_label.set_use_markup(True)
+        self.ocr_count_label.add_css_class("monospace")
+        sidebar.append(self.ocr_count_label)
     
     def _add_label_editor(self, sidebar):
         """Add label editor controls"""
@@ -620,44 +580,47 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
     
     def update_ocr_counts_table(self):
         """Update OCR character counts table"""
-        if not hasattr(self, 'ocr_counts_grid'):
+        if not hasattr(self, 'ocr_count_label'):
             return
         
-        # Clear existing data rows (keep header and separator)
-        # Remove all children from row 2 onwards
-        child = self.ocr_counts_grid.get_child_at(0, 2)
-        while child:
-            self.ocr_counts_grid.remove(child)
-            child = self.ocr_counts_grid.get_child_at(0, 2)
+        if not hasattr(self, 'canvas') or not self.canvas.boxes:
+            # Update letter count to 0
+            self.ocr_count_label.set_markup(
+                "<b>OCR Character Counts</b>\n<small>No labels</small>")
+            return
         
-        # Get OCR character counts
-        counts = self.label_manager.get_ocr_character_counts()
+        # Calculate character counts by type
+        total_letters = 0
+        total_numbers = 0
+        total_special = 0
         
-        if counts:
-            # Add data rows
-            row = 2
-            for class_name, count in counts.items():
-                # Class name column
-                class_label = Gtk.Label()
-                class_label.set_text(class_name)
-                class_label.set_halign(Gtk.Align.START)
-                self.ocr_counts_grid.attach(class_label, 0, row, 1, 1)
-                
-                # Count column
-                count_label = Gtk.Label()
-                count_label.set_text(str(count))
-                count_label.set_halign(Gtk.Align.END)
-                count_label.add_css_class("monospace")
-                self.ocr_counts_grid.attach(count_label, 1, row, 1, 1)
-                
-                row += 1
-        else:
-            # Add "No labels" row
-            no_labels = Gtk.Label()
-            no_labels.set_text("No labels")
-            no_labels.set_halign(Gtk.Align.START)
-            no_labels.add_css_class("dim-label")
-            self.ocr_counts_grid.attach(no_labels, 0, 2, 2, 1)
+        # Create table header
+        table_text = "<b>OCR Character Counts</b>\n"
+        table_text += "<tt>Line | Letters | Numbers | Special | Total</tt>\n"
+        table_text += "<tt>-----|---------|---------|---------|------</tt>\n"
+        
+        for box in sorted(self.canvas.boxes, key=lambda b: b.class_id):
+            # Count characters by type
+            letter_count = sum(1 for char in box.ocr_text if char.isalpha())
+            number_count = sum(1 for char in box.ocr_text if char.isdigit())
+            special_count = sum(1 for char in box.ocr_text if not char.isalnum() and not char.isspace())
+            # Total non-space characters
+            total_chars = len(box.ocr_text.replace(' ', ''))
+            
+            total_letters += letter_count
+            total_numbers += number_count
+            total_special += special_count
+            
+            # Format table row with fixed width columns
+            table_text += f"<tt>{box.name:<4} | {letter_count:^7} | {number_count:^7} | {special_count:^7} | {total_chars:^5}</tt>\n"
+        
+        # Add totals row
+        total_all = total_letters + total_numbers + total_special
+        table_text += "<tt>-----|---------|---------|---------|------</tt>\n"
+        table_text += f"<tt>{'ALL':<4} | {total_letters:^7} | {total_numbers:^7} | {total_special:^7} | {total_all:^5}</tt>"
+        
+        # Update the character count display
+        self.ocr_count_label.set_markup(table_text)
     
     def load_current_image(self):
         """Load current image and DAT file"""

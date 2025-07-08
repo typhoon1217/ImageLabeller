@@ -220,25 +220,25 @@ class ImageCanvas(Gtk.DrawingArea):
                 cr.move_to(label_x + 2, label_y + text_height - 2)
                 cr.show_text(label_text)
 
-            if box.selected:
-                handle_size = 6
-                cr.set_source_rgb(1.0, 1.0, 0.0)  # Yellow handles
+                if box.selected:
+                    handle_size = 6
+                    cr.set_source_rgb(1.0, 1.0, 0.0)  # Yellow handles
 
-                handles = [
-                    (canvas_x, canvas_y),  # nw
-                    (canvas_x + canvas_width, canvas_y),  # ne
-                    (canvas_x, canvas_y + canvas_height),  # sw
-                    (canvas_x + canvas_width, canvas_y + canvas_height),  # se
-                    (canvas_x + canvas_width/2, canvas_y),  # n
-                    (canvas_x + canvas_width/2, canvas_y + canvas_height),  # s
-                    (canvas_x, canvas_y + canvas_height/2),  # w
-                    (canvas_x + canvas_width, canvas_y + canvas_height/2),  # e
-                ]
+                    handles = [
+                        (canvas_x, canvas_y),  # nw
+                        (canvas_x + canvas_width, canvas_y),  # ne
+                        (canvas_x, canvas_y + canvas_height),  # sw
+                        (canvas_x + canvas_width, canvas_y + canvas_height),  # se
+                        (canvas_x + canvas_width/2, canvas_y),  # n
+                        (canvas_x + canvas_width/2, canvas_y + canvas_height),  # s
+                        (canvas_x, canvas_y + canvas_height/2),  # w
+                        (canvas_x + canvas_width, canvas_y + canvas_height/2),  # e
+                    ]
 
-                for hx, hy in handles:
-                    cr.rectangle(hx - handle_size/2, hy -
-                                 handle_size/2, handle_size, handle_size)
-                    cr.fill()
+                    for hx, hy in handles:
+                        cr.rectangle(hx - handle_size/2, hy -
+                                     handle_size/2, handle_size, handle_size)
+                        cr.fill()
         except Exception as e:
             print(f"Draw error (boxes): {e}")
 
