@@ -139,23 +139,23 @@ class ValidationEngine:
         return None
     
     def get_file_validation_status(self, file_path: str) -> str:
-        """Get CSS class name for file validation status"""
+        """Get validation status string for file"""
         validation = self.validation_cache.get(file_path)
         if not validation:
-            return "file-normal"
+            return "normal"
         
         if validation.get('error'):
-            return "file-error"
+            return "error"
         elif validation.get('no_dat'):
-            return "file-no-dat"
+            return "no_dat"
         elif validation.get('missing_classes'):
-            return "file-missing-classes"
+            return "missing_classes"
         elif validation.get('regex_errors'):
-            return "file-invalid-regex"
+            return "invalid_regex"
         elif validation.get('valid'):
-            return "file-valid"
+            return "valid"
         else:
-            return "file-normal"
+            return "normal"
     
     def get_validation_summary(self, validation_cache: Dict[str, Dict[str, Any]]) -> Dict[str, int]:
         """Get summary of validation results"""

@@ -132,7 +132,39 @@ class EventHandlerMixin:
         """Bind data to list item"""
         label = list_item.get_child()
         string_object = list_item.get_item()
-        label.set_text(string_object.get_string())
+        filename = string_object.get_string()
+        label.set_text(filename)
+        
+        # Apply validation status styling
+        if hasattr(self, 'file_list_data'):
+            # Find the file info for this item
+            position = list_item.get_position()
+            if position < len(self.file_list_data):
+                file_info = self.file_list_data[position]
+                validation_status = file_info.get('validation_status', 'normal')
+                
+                # Remove existing style classes
+                label.remove_css_class('file-normal')
+                label.remove_css_class('file-saved')
+                label.remove_css_class('file-valid')
+                label.remove_css_class('file-no-dat')
+                label.remove_css_class('file-missing-classes')
+                label.remove_css_class('file-invalid-regex')
+                label.remove_css_class('file-error')
+                
+                # Apply appropriate style class
+                if validation_status == 'valid':
+                    label.add_css_class('file-valid')
+                elif validation_status == 'no_dat':
+                    label.add_css_class('file-no-dat')
+                elif validation_status == 'missing_classes':
+                    label.add_css_class('file-missing-classes')
+                elif validation_status == 'invalid_regex':
+                    label.add_css_class('file-invalid-regex')
+                elif validation_status == 'error':
+                    label.add_css_class('file-error')
+                else:
+                    label.add_css_class('file-normal')
     
     def on_file_selected(self, selection, param=None):
         """Handle file selection in list"""

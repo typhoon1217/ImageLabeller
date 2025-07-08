@@ -528,7 +528,9 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         """Update file list display"""
         if hasattr(self, 'file_list_store'):
             self.file_list_store.splice(0, self.file_list_store.get_n_items())
-            for file_info in self.project_manager.get_file_list():
+            # Store file info as strings but we'll access full info in binding
+            self.file_list_data = self.project_manager.get_file_list()
+            for file_info in self.file_list_data:
                 self.file_list_store.append(file_info['name'])
     
     def update_directory_stats(self):
