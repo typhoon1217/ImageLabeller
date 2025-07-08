@@ -71,6 +71,43 @@ class LabelManager:
             print(f"Error initializing deletion history database: {e}")
             self.db_path = None
     
+    def sync_deletion_history_with_directory(self, directory_path: str):
+        """Sync deletion history database with files in directory"""
+        if not self.db_path:
+            return
+        
+        try:
+            from pathlib import Path
+            
+            # Get all image files in directory
+            directory = Path(directory_path)
+            image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.gif'}
+            current_files = set()
+            
+            for file_path in directory.iterdir():
+                if file_path.is_file() and file_path.suffix.lower() in image_extensions:
+                    current_files.add(str(file_path))
+            
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            
+            # Get all image paths in database
+            cursor.execute('SELECT DISTINCT image_path FROM deletion_history')
+            db_files = set(row[0] for row in cursor.fetchall())
+            
+            # Remove entries for files that no longer exist
+            removed_files = db_files - current_files
+            if removed_files:
+                for file_path in removed_files:
+                    cursor.execute('DELETE FROM deletion_history WHERE image_path = ?', (file_path,))
+                print(f"Removed {len(removed_files)} deleted file entries from deletion history")
+            
+            conn.commit()
+            conn.close()
+            
+        except Exception as e:
+            print(f"Error syncing deletion history with directory: {e}")
+    
     def save_deleted_box(self, image_path: str, box: BoundingBox):
         """Save deleted box to history database"""
         if not self.db_path:
@@ -592,6 +629,47 @@ class ConfirmationManager:
         except Exception as e:
             print(f"Error getting stats from database: {e}")
             return {'total': 0, 'confirmed': 0, 'unconfirmed': 0}
+    
+    def sync_confirmation_db_with_directory(self, directory_path: str):
+        """Sync confirmation database with files in directory"""
+        if not self.db_path:
+            return
+        
+        try:
+            import sqlite3
+            from pathlib import Path
+            
+            # Get all image files in directory
+            directory = Path(directory_path)
+            image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.gif'}
+            current_files = set()
+            
+            for file_path in directory.iterdir():
+                if file_path.is_file() and file_path.suffix.lower() in image_extensions:
+                    current_files.add(str(file_path))
+            
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            
+            # Get all file paths in database
+            cursor.execute('SELECT file_path FROM file_confirmations')
+            db_files = set(row[0] for row in cursor.fetchall())
+            
+            # Remove entries for files that no longer exist
+            removed_files = db_files - current_files
+            if removed_files:
+                for file_path in removed_files:
+                    cursor.execute('DELETE FROM file_confirmations WHERE file_path = ?', (file_path,))
+                print(f"Removed {len(removed_files)} deleted file entries from confirmation database")
+            
+            conn.commit()
+            conn.close()
+            
+            # Reload confirmation status from database
+            self.load_from_database()
+            
+        except Exception as e:
+            print(f"Error syncing confirmation database with directory: {e}")
     
     def set_directory(self, directory_path: str):
         """Set new directory and reinitialize database"""

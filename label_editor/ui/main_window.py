@@ -518,8 +518,12 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         # Update confirmation manager with new directory
         if self.project_manager.current_directory:
             self.confirmation_manager.set_directory(str(self.project_manager.current_directory))
+            # Sync confirmation database with current directory files
+            self.confirmation_manager.sync_confirmation_db_with_directory(str(self.project_manager.current_directory))
             # Initialize deletion history database
             self.label_manager.init_deletion_history_db(str(self.project_manager.current_directory))
+            # Sync deletion history with current directory files
+            self.label_manager.sync_deletion_history_with_directory(str(self.project_manager.current_directory))
         
         self.update_file_list()
         self.update_directory_stats()
@@ -583,15 +587,19 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
                 self.file_list_store.append(file_info['name'])
     
     def update_file_list_colors(self):
-        """Update file list colors without rebuilding the list"""
+        """Update file list colors by swapping selection model"""
         if hasattr(self, 'file_list_store') and hasattr(self, 'file_list_selection'):
+            print(f"update_file_list_colors called - updating {len(self.file_list_data) if hasattr(self, 'file_list_data') else 0} items")
+            
             # Update the file list data to get latest validation status
             self.file_list_data = self.project_manager.get_file_list()
-            # Force ListView to rebind items by triggering model change
-            if hasattr(self, 'file_list_view'):
-                # Temporarily set to None and back to force rebinding
-                self.file_list_view.set_model(None)
-                self.file_list_view.set_model(self.file_list_selection)
+            
+            # For now, just update the data without forcing a visual refresh
+            # The colors will update when the user navigates or the list naturally refreshes
+            print("Updated file_list_data with new confirmation status")
+            
+            # TODO: Find a way to update colors without scroll reset
+            # For now, skip the visual update to prevent scroll reset
     
     def update_directory_stats(self):
         """Update directory statistics display"""
@@ -795,9 +803,9 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         # Update file list selection and colors
         self._updating_selection = True
         self.file_list_selection.set_selected(image_info['index'])
-        # Ensure the selected item is visible in the scrolled view
+        # Ensure the selected item is visible in the scroll range
         if hasattr(self, 'file_list_view'):
-            self.file_list_view.scroll_to(image_info['index'], Gtk.ListScrollFlags.FOCUS)
+            self.file_list_view.scroll_to(image_info['index'], Gtk.ListScrollFlags.SELECT)
         # Update file list colors to reflect current validation status
         self.update_file_list_colors()
         # Update directory statistics
@@ -814,6 +822,7 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
     def toggle_confirmation(self):
         """Toggle confirmation status"""
         if self.project_manager.current_image_path:
+            old_status = self.confirmation_manager.get_confirmation(self.project_manager.current_image_path)
             new_status = self.confirmation_manager.toggle_confirmation(
                 self.project_manager.current_image_path)
             
@@ -821,6 +830,13 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
             self.confirm_checkbox.disconnect_by_func(self.on_confirm_toggled)
             self.confirm_checkbox.set_active(new_status)
             self.confirm_checkbox.connect('toggled', self.on_confirm_toggled)
+            
+            # Only update file list colors if confirmation actually changed
+            if old_status != new_status:
+                print(f"Confirmation changed from {old_status} to {new_status} - updating colors")
+                self.update_file_list_colors()
+            else:
+                print("Confirmation didn't change - skipping color update")
             
             # Only advance to next image when confirming (not when unconfirming)
             if new_status and self.project_manager.get_navigation_state()['can_go_next']:

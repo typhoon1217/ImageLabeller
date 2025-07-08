@@ -167,6 +167,15 @@ class EventHandlerMixin:
                 file_info = self.file_list_data[position]
                 validation_status = file_info.get('validation_status', 'normal')
                 
+                # Check if file is confirmed
+                file_path = file_info.get('path', '')
+                is_confirmed = False
+                if hasattr(self, 'confirmation_manager'):
+                    is_confirmed = self.confirmation_manager.get_confirmation(file_path)
+                
+                # Debug: print binding info
+                print(f"Binding item {position}: {filename} - validation: {validation_status}, confirmed: {is_confirmed}")
+                
                 # Remove existing style classes
                 label.remove_css_class('file-normal')
                 label.remove_css_class('file-saved')
@@ -343,6 +352,9 @@ class EventHandlerMixin:
             if hasattr(self, 'confirmation_manager'):
                 self.confirmation_manager.set_confirmation(
                     self.project_manager.current_image_path, is_confirmed)
+            
+            # Update file list colors to reflect confirmation change
+            self.update_file_list_colors()
             
             # Only advance to next image when confirming (not when unconfirming)
             if is_confirmed and self.project_manager.get_navigation_state()['can_go_next']:
