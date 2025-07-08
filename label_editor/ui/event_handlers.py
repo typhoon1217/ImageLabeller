@@ -233,25 +233,6 @@ class EventHandlerMixin:
         if hasattr(self, 'project_manager') and self.project_manager.current_dat_path:
             self.save_dat_file(str(self.project_manager.current_dat_path))
     
-    def on_save_as(self, action, param):
-        """Handle save as action"""
-        dialog = Gtk.FileDialog()
-        dialog.save(self, None, self.on_save_as_response)
-    
-    def on_save_as_response(self, dialog, result):
-        """Handle save as dialog response"""
-        try:
-            file = dialog.save_finish(result)
-            if file:
-                self.save_dat_file(file.get_path())
-        except Exception as e:
-            self.show_error(f"Error saving file: {e}")
-    
-    def on_quit(self, action, param):
-        """Handle quit action"""
-        self.auto_save_current()
-        self.close()
-    
     # Text editing handlers
     def on_ocr_text_changed(self, buffer):
         """Handle OCR text change"""
@@ -376,9 +357,6 @@ class EventHandlerMixin:
                 if hasattr(self, 'prev_button') and self.prev_button.get_sensitive():
                     self.on_prev_clicked(None)
                 return True
-            elif keyval == Gdk.KEY_q:
-                self.on_quit(None, None)
-                return True
         else:
             if keyval == Gdk.KEY_Left:
                 if hasattr(self, 'prev_button') and self.prev_button.get_sensitive():
@@ -497,7 +475,7 @@ Label Editing:
 Text Editing:
 • Global shortcuts work everywhere except when typing in text boxes
 • Esc - Exit text editing mode and return to global shortcuts
-• Ctrl+S/O/Q - Work even when typing in text boxes
+• Ctrl+S/O - Work even when typing in text boxes
 
 Confirmation:
 • Enter - Toggle confirmation status (when confirming: go to next image)
@@ -511,8 +489,8 @@ Zoom & View:
 
 File Operations:
 • Ctrl+O - Open directory
-• Ctrl+S - Save current labels
-• Ctrl+Q - Quit application
+• Ctrl+S - Manual save current labels
+• Labels are auto-saved automatically
 
 Help:
 • H / F1 - Show this help"""

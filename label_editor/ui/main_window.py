@@ -103,10 +103,7 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         menu = Gio.Menu()
         menu.append("Open Directory", "win.open-directory")
         menu.append("Open Image", "win.open-image")
-        menu.append("Save", "win.save")
-        menu.append("Save As", "win.save-as")
         menu.append("Keyboard Shortcuts", "win.show-help")
-        menu.append("Quit", "win.quit")
         menu_button.set_menu_model(menu)
         
         self._create_actions()
@@ -117,8 +114,6 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
             ("open-directory", self.on_open_directory),
             ("open-image", self.on_open_image),
             ("save", self.on_save),
-            ("save-as", self.on_save_as),
-            ("quit", self.on_quit),
             ("show-help", lambda a, p: self.show_help_dialog())
         ]
         
