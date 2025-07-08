@@ -156,18 +156,45 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         sidebar.append(scrolled_files)
         
         # Directory stats
-        self.dir_stats = Gtk.Label()
-        self.dir_stats.set_text("No directory loaded")
-        self.dir_stats.set_wrap(True)
-        self.dir_stats.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
-        self.dir_stats.set_valign(Gtk.Align.START)
-        self.dir_stats.set_max_width_chars(35)
-        self.dir_stats.set_margin_start(10)
-        self.dir_stats.set_margin_end(10)
-        self.dir_stats.set_margin_top(10)
-        sidebar.append(self.dir_stats)
+        self._create_directory_stats_section(sidebar)
         
         return sidebar
+    
+    def _create_directory_stats_section(self, sidebar):
+        """Create directory statistics section with better formatting"""
+        # Title
+        stats_title = Gtk.Label()
+        stats_title.set_markup("<b>Directory Statistics</b>")
+        stats_title.set_halign(Gtk.Align.START)
+        stats_title.set_margin_start(10)
+        stats_title.set_margin_top(10)
+        sidebar.append(stats_title)
+        
+        # Create frame for better visual separation
+        stats_frame = Gtk.Frame()
+        stats_frame.set_margin_start(10)
+        stats_frame.set_margin_end(10)
+        stats_frame.set_margin_top(5)
+        stats_frame.set_margin_bottom(5)
+        
+        # Create grid for organized display
+        self.dir_stats_grid = Gtk.Grid()
+        self.dir_stats_grid.set_column_spacing(10)
+        self.dir_stats_grid.set_row_spacing(5)
+        self.dir_stats_grid.set_margin_start(10)
+        self.dir_stats_grid.set_margin_end(10)
+        self.dir_stats_grid.set_margin_top(10)
+        self.dir_stats_grid.set_margin_bottom(10)
+        
+        # Add "No directory loaded" initially
+        no_dir_label = Gtk.Label()
+        no_dir_label.set_text("No directory loaded")
+        no_dir_label.set_halign(Gtk.Align.CENTER)
+        no_dir_label.add_css_class("dim-label")
+        self.dir_stats_grid.attach(no_dir_label, 0, 0, 2, 1)
+        
+        stats_frame.set_child(self.dir_stats_grid)
+        sidebar.append(stats_frame)
     
     def _create_canvas_area(self) -> Gtk.Box:
         """Create canvas area with navigation"""
@@ -550,18 +577,117 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
     
     def update_directory_stats(self):
         """Update directory statistics display"""
+        if not hasattr(self, 'dir_stats_grid'):
+            return
+        
+        # Clear existing content
+        child = self.dir_stats_grid.get_first_child()
+        while child:
+            next_child = child.get_next_sibling()
+            self.dir_stats_grid.remove(child)
+            child = next_child
+        
         stats = self.project_manager.get_directory_stats()
         if stats['loaded']:
             summary = stats['validation_summary']
             confirmation_stats = self.confirmation_manager.get_confirmation_stats()
             
-            stats_text = f"Directory: {Path(stats['directory']).name}\\n"
-            stats_text += f"Total files: {stats['total_files']}\\n"
-            stats_text += f"Valid: {summary['valid']}, No DAT: {summary['no_dat']}\\n"
-            stats_text += f"Confirmed: {confirmation_stats['confirmed']}/{confirmation_stats['total']}"
-            self.dir_stats.set_text(stats_text)
+            row = 0
+            
+            # Directory name
+            dir_label = Gtk.Label()
+            dir_label.set_markup(f"<b>{Path(stats['directory']).name}</b>")
+            dir_label.set_halign(Gtk.Align.START)
+            self.dir_stats_grid.attach(dir_label, 0, row, 2, 1)
+            row += 1
+            
+            # Total files
+            total_label = Gtk.Label()
+            total_label.set_text("Total files:")
+            total_label.set_halign(Gtk.Align.START)
+            self.dir_stats_grid.attach(total_label, 0, row, 1, 1)
+            
+            total_count = Gtk.Label()
+            total_count.set_markup(f"<b>{stats['total_files']}</b>")
+            total_count.set_halign(Gtk.Align.END)
+            self.dir_stats_grid.attach(total_count, 1, row, 1, 1)
+            row += 1
+            
+            # Valid files
+            valid_label = Gtk.Label()
+            valid_label.set_text("Valid:")
+            valid_label.set_halign(Gtk.Align.START)
+            self.dir_stats_grid.attach(valid_label, 0, row, 1, 1)
+            
+            valid_count = Gtk.Label()
+            valid_count.set_markup(f"<span color='#10b981'><b>{summary['valid']}</b></span>")
+            valid_count.set_halign(Gtk.Align.END)
+            self.dir_stats_grid.attach(valid_count, 1, row, 1, 1)
+            row += 1
+            
+            # No DAT files
+            no_dat_label = Gtk.Label()
+            no_dat_label.set_text("No DAT:")
+            no_dat_label.set_halign(Gtk.Align.START)
+            self.dir_stats_grid.attach(no_dat_label, 0, row, 1, 1)
+            
+            no_dat_count = Gtk.Label()
+            no_dat_count.set_markup(f"<span color='#f59e0b'><b>{summary['no_dat']}</b></span>")
+            no_dat_count.set_halign(Gtk.Align.END)
+            self.dir_stats_grid.attach(no_dat_count, 1, row, 1, 1)
+            row += 1
+            
+            # Missing classes
+            if summary.get('missing_classes', 0) > 0:
+                missing_label = Gtk.Label()
+                missing_label.set_text("Missing classes:")
+                missing_label.set_halign(Gtk.Align.START)
+                self.dir_stats_grid.attach(missing_label, 0, row, 1, 1)
+                
+                missing_count = Gtk.Label()
+                missing_count.set_markup(f"<span color='#ef4444'><b>{summary['missing_classes']}</b></span>")
+                missing_count.set_halign(Gtk.Align.END)
+                self.dir_stats_grid.attach(missing_count, 1, row, 1, 1)
+                row += 1
+            
+            # Regex errors
+            if summary.get('regex_errors', 0) > 0:
+                regex_label = Gtk.Label()
+                regex_label.set_text("Invalid format:")
+                regex_label.set_halign(Gtk.Align.START)
+                self.dir_stats_grid.attach(regex_label, 0, row, 1, 1)
+                
+                regex_count = Gtk.Label()
+                regex_count.set_markup(f"<span color='#dc2626'><b>{summary['regex_errors']}</b></span>")
+                regex_count.set_halign(Gtk.Align.END)
+                self.dir_stats_grid.attach(regex_count, 1, row, 1, 1)
+                row += 1
+            
+            # Separator
+            separator = Gtk.Separator()
+            separator.set_margin_top(5)
+            separator.set_margin_bottom(5)
+            self.dir_stats_grid.attach(separator, 0, row, 2, 1)
+            row += 1
+            
+            # Confirmed files
+            confirmed_label = Gtk.Label()
+            confirmed_label.set_text("Confirmed:")
+            confirmed_label.set_halign(Gtk.Align.START)
+            self.dir_stats_grid.attach(confirmed_label, 0, row, 1, 1)
+            
+            confirmed_count = Gtk.Label()
+            confirmed_count.set_markup(f"<span color='#22c55e'><b>{confirmation_stats['confirmed']}/{confirmation_stats['total']}</b></span>")
+            confirmed_count.set_halign(Gtk.Align.END)
+            self.dir_stats_grid.attach(confirmed_count, 1, row, 1, 1)
+            
         else:
-            self.dir_stats.set_text("No directory loaded")
+            # No directory loaded
+            no_dir_label = Gtk.Label()
+            no_dir_label.set_text("No directory loaded")
+            no_dir_label.set_halign(Gtk.Align.CENTER)
+            no_dir_label.add_css_class("dim-label")
+            self.dir_stats_grid.attach(no_dir_label, 0, 0, 2, 1)
     
     def update_all_labels_display(self):
         """Update all labels display"""
