@@ -569,13 +569,22 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
             self.zoom_label.set_text(f"{zoom_percent}%")
     
     def update_file_list(self):
-        """Update file list display"""
+        """Rebuild file list display (use only when directory changes)"""
         if hasattr(self, 'file_list_store'):
             self.file_list_store.splice(0, self.file_list_store.get_n_items())
             # Store file info as strings but we'll access full info in binding
             self.file_list_data = self.project_manager.get_file_list()
             for file_info in self.file_list_data:
                 self.file_list_store.append(file_info['name'])
+    
+    def update_file_list_colors(self):
+        """Update file list colors without rebuilding the list"""
+        if hasattr(self, 'file_list_store'):
+            # Update the file list data to get latest validation status
+            self.file_list_data = self.project_manager.get_file_list()
+            # Force ListView to rebind items by triggering an update
+            if hasattr(self, 'file_list_view'):
+                self.file_list_view.set_model(self.file_list_store)
     
     def update_directory_stats(self):
         """Update directory statistics display"""
@@ -778,8 +787,10 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         
         # Update file list selection and colors
         self._updating_selection = True
-        self.update_file_list()  # Update colors without navigation interference
         self.file_list_selection.set_selected(image_info['index'])
+        # Ensure the selected item is visible in the scrolled view
+        if hasattr(self, 'file_list_view'):
+            self.file_list_view.scroll_to(image_info['index'], Gtk.ListScrollFlags.FOCUS)
         self._updating_selection = False
     
     def set_editing_enabled(self, enabled: bool):
@@ -824,6 +835,8 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
             if self.label_manager.save_to_file(file_path):
                 self.unsaved_changes = False
                 self.update_title()
+                # Update file list colors to reflect new validation status
+                self.update_file_list_colors()
     
     def load_image(self, image_path: str):
         """Load a single image"""
