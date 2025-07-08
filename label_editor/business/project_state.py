@@ -234,30 +234,7 @@ class ProjectManager:
         
         self.executor.submit(save_operation)
     
-    def perform_file_permission_change(self, file_path: str, make_readonly: bool):
-        """Perform file permission change operation"""
-        def permission_operation():
-            try:
-                import stat
-                dat_path = Path(file_path).with_suffix('.dat')
-                
-                if not dat_path.exists():
-                    return
-                
-                current_mode = dat_path.stat().st_mode
-                
-                if make_readonly:
-                    new_mode = current_mode & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
-                else:
-                    new_mode = current_mode | stat.S_IWUSR
-                
-                dat_path.chmod(new_mode)
-                
-            except Exception as e:
-                if self.on_error:
-                    self.on_error(f"Error changing file permissions: {e}")
-        
-        self.executor.submit(permission_operation)
+# File permission changes removed - confirmation now only records status
     
     def close(self):
         """Clean up resources"""

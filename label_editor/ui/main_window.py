@@ -445,6 +445,9 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         self.label_manager.on_boxes_changed = self.on_boxes_changed
         self.label_manager.on_status_update = self.update_status
         self.label_manager.on_error = self.show_error
+        
+        # Confirmation manager callbacks
+        self.confirmation_manager.on_confirmation_changed = self._on_confirmation_changed
     
     def _setup_css(self):
         """Setup CSS styling"""
@@ -462,6 +465,7 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         .file-missing-classes { color: #ef4444; font-weight: bold; }
         .file-invalid-regex { color: #dc2626; }
         .file-error { color: #991b1b; font-style: italic; }
+        .file-confirmed { color: #22c55e; font-weight: bold; text-decoration: underline; }
         
         /* Force software rendering to avoid GL context issues */
         #software-rendered-canvas {
@@ -478,6 +482,10 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
     # Callback implementations
     def _on_directory_loaded(self, file_count: int):
         """Handle directory loaded"""
+        # Update confirmation manager with new directory
+        if self.project_manager.current_directory:
+            self.confirmation_manager.set_directory(str(self.project_manager.current_directory))
+        
         self.update_file_list()
         self.update_directory_stats()
         if file_count > 0:
@@ -487,6 +495,11 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
     def _on_image_changed(self, image_path: str, dat_path):
         """Handle image changed"""
         self.load_current_image()
+    
+    def _on_confirmation_changed(self, file_path: str, confirmed: bool):
+        """Handle confirmation status change"""
+        # Refresh file list to show updated confirmation status
+        self.update_file_list()
     
     def _load_directory_async(self, directory_path: str):
         """Load directory asynchronously"""
@@ -538,9 +551,12 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         stats = self.project_manager.get_directory_stats()
         if stats['loaded']:
             summary = stats['validation_summary']
+            confirmation_stats = self.confirmation_manager.get_confirmation_stats()
+            
             stats_text = f"Directory: {Path(stats['directory']).name}\\n"
             stats_text += f"Total files: {stats['total_files']}\\n"
-            stats_text += f"Valid: {summary['valid']}, No DAT: {summary['no_dat']}"
+            stats_text += f"Valid: {summary['valid']}, No DAT: {summary['no_dat']}\\n"
+            stats_text += f"Confirmed: {confirmation_stats['confirmed']}/{confirmation_stats['total']}"
             self.dir_stats.set_text(stats_text)
         else:
             self.dir_stats.set_text("No directory loaded")

@@ -287,17 +287,26 @@ class OCRProcessor:
 
 
 class ConfirmationManager:
-    """Manages confirmation status for files"""
+    """Manages confirmation status for files using SQLite database"""
     
-    def __init__(self):
+    def __init__(self, directory_path: str = None):
         self.confirmation_status = {}
+        self.directory_path = directory_path
+        self.db_path = None
         self.on_confirmation_changed = None
+        
+        # Initialize database if directory provided
+        if self.directory_path:
+            self.init_database()
     
     def set_confirmation(self, file_path: str, confirmed: bool):
         """Set confirmation status for a file"""
         self.confirmation_status[file_path] = confirmed
         if self.on_confirmation_changed:
             self.on_confirmation_changed(file_path, confirmed)
+        
+        # Save status to database
+        self.save_to_database(file_path, confirmed)
     
     def get_confirmation(self, file_path: str) -> bool:
         """Get confirmation status for a file"""
@@ -319,3 +328,181 @@ class ConfirmationManager:
             'unconfirmed': total - confirmed,
             'total': total
         }
+    
+    def init_database(self):
+        """Initialize SQLite database for the current directory"""
+        if not self.directory_path:
+            return
+        
+        try:
+            import sqlite3
+            from pathlib import Path
+            
+            # Create database file in the image directory
+            dir_path = Path(self.directory_path)
+            self.db_path = dir_path / '.label_editor.db'
+            
+            # Initialize database schema
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            
+            # Create table if it doesn't exist
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS file_confirmations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    file_path TEXT UNIQUE NOT NULL,
+                    filename TEXT NOT NULL,
+                    confirmed INTEGER NOT NULL DEFAULT 0,
+                    confirmed_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Create index for faster lookups
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_file_path ON file_confirmations(file_path)
+            ''')
+            
+            conn.commit()
+            conn.close()
+            
+            # Load existing confirmations into memory
+            self.load_from_database()
+            
+        except Exception as e:
+            print(f"Error initializing database: {e}")
+    
+    def save_to_database(self, file_path: str, confirmed: bool):
+        """Save confirmation status to SQLite database"""
+        if not self.db_path:
+            return
+        
+        try:
+            import sqlite3
+            from pathlib import Path
+            
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            
+            filename = Path(file_path).name
+            confirmed_at = 'CURRENT_TIMESTAMP' if confirmed else None
+            
+            # Insert or update confirmation status
+            cursor.execute('''
+                INSERT OR REPLACE INTO file_confirmations 
+                (file_path, filename, confirmed, confirmed_at, updated_at)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ''', (file_path, filename, int(confirmed), confirmed_at))
+            
+            conn.commit()
+            conn.close()
+            
+        except Exception as e:
+            print(f"Error saving to database: {e}")
+    
+    def load_from_database(self):
+        """Load confirmation status from SQLite database"""
+        if not self.db_path:
+            return
+        
+        try:
+            import sqlite3
+            from pathlib import Path
+            
+            if not Path(self.db_path).exists():
+                return
+            
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            
+            # Load all confirmations
+            cursor.execute('SELECT file_path, confirmed FROM file_confirmations')
+            rows = cursor.fetchall()
+            
+            self.confirmation_status = {}
+            for file_path, confirmed in rows:
+                self.confirmation_status[file_path] = bool(confirmed)
+            
+            conn.close()
+            
+        except Exception as e:
+            print(f"Error loading from database: {e}")
+            self.confirmation_status = {}
+    
+    def get_confirmation_stats(self) -> dict:
+        """Get detailed confirmation statistics from database"""
+        if not self.db_path:
+            return {'total': 0, 'confirmed': 0, 'unconfirmed': 0}
+        
+        try:
+            import sqlite3
+            from pathlib import Path
+            
+            if not Path(self.db_path).exists():
+                return {'total': 0, 'confirmed': 0, 'unconfirmed': 0}
+            
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            
+            # Get statistics
+            cursor.execute('SELECT COUNT(*) FROM file_confirmations')
+            total = cursor.fetchone()[0]
+            
+            cursor.execute('SELECT COUNT(*) FROM file_confirmations WHERE confirmed = 1')
+            confirmed = cursor.fetchone()[0]
+            
+            conn.close()
+            
+            return {
+                'total': total,
+                'confirmed': confirmed,
+                'unconfirmed': total - confirmed
+            }
+            
+        except Exception as e:
+            print(f"Error getting stats from database: {e}")
+            return {'total': 0, 'confirmed': 0, 'unconfirmed': 0}
+    
+    def set_directory(self, directory_path: str):
+        """Set new directory and reinitialize database"""
+        self.directory_path = directory_path
+        self.confirmation_status = {}
+        self.init_database()
+    
+    def get_confirmed_files(self) -> list:
+        """Get list of all confirmed files"""
+        if not self.db_path:
+            return []
+        
+        try:
+            import sqlite3
+            from pathlib import Path
+            
+            if not Path(self.db_path).exists():
+                return []
+            
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT file_path, filename, confirmed_at 
+                FROM file_confirmations 
+                WHERE confirmed = 1 
+                ORDER BY confirmed_at DESC
+            ''')
+            
+            confirmed_files = []
+            for row in cursor.fetchall():
+                confirmed_files.append({
+                    'path': row[0],
+                    'filename': row[1],
+                    'confirmed_at': row[2]
+                })
+            
+            conn.close()
+            return confirmed_files
+            
+        except Exception as e:
+            print(f"Error getting confirmed files: {e}")
+            return []
