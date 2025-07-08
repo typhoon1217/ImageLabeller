@@ -86,18 +86,18 @@ class EventHandlerMixin:
                         class_info = cls
                         break
             
-            info_text = f"Selected: {box.name}\\nPosition: {box.x}, {box.y}\\nSize: {box.width} x {box.height}\\nClass ID: {box.class_id}"
+            info_text = f"<b>Selected:</b> {box.name}\n<b>Position:</b> {box.x}, {box.y}\n<b>Size:</b> {box.width} x {box.height}\n<b>Class ID:</b> {box.class_id}"
             
             if class_info and "regex_pattern" in class_info and box.ocr_text:
                 import re
                 regex_pattern = class_info["regex_pattern"]
                 if re.match(regex_pattern, box.ocr_text):
-                    info_text += "\\n✓ Valid format"
+                    info_text += "\n<span color='green'>✓ Valid format</span>"
                 else:
-                    info_text += "\\n✗ Invalid format"
+                    info_text += "\n<span color='red'>✗ Invalid format</span>"
             
             if hasattr(self, 'selected_info'):
-                self.selected_info.set_text(info_text)
+                self.selected_info.set_markup(info_text)
             
             if hasattr(self, 'ocr_text'):
                 buffer = self.ocr_text.get_buffer()
@@ -115,7 +115,7 @@ class EventHandlerMixin:
             self.set_editing_enabled(True)
         else:
             if hasattr(self, 'selected_info'):
-                self.selected_info.set_text("No box selected")
+                self.selected_info.set_markup("<i>No box selected</i>")
             if hasattr(self, 'ocr_text'):
                 self.ocr_text.get_buffer().set_text("")
             self.set_editing_enabled(False)
@@ -131,8 +131,8 @@ class EventHandlerMixin:
         if hasattr(self, 'canvas') and self.canvas.selected_box:
             box = self.canvas.selected_box
             if hasattr(self, 'selected_info'):
-                self.selected_info.set_text(
-                    f"Selected: {box.name}\\nPosition: {box.x}, {box.y}\\nSize: {box.width} x {box.height}\\nClass ID: {box.class_id}\\nConfidence: {getattr(box, 'confidence', 'N/A')}")
+                self.selected_info.set_markup(
+                    f"<b>Selected:</b> {box.name}\n<b>Position:</b> {box.x}, {box.y}\n<b>Size:</b> {box.width} x {box.height}\n<b>Class ID:</b> {box.class_id}\n<b>Confidence:</b> {getattr(box, 'confidence', 'N/A')}")
         
         self.update_all_labels_display()
     

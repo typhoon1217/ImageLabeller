@@ -278,7 +278,7 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
     def _create_editor_sidebar(self) -> Gtk.Box:
         """Create label editor sidebar"""
         sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        sidebar.set_size_request(300, -1)
+        sidebar.set_size_request(150, -1)
         sidebar.set_hexpand(False)
         sidebar.set_vexpand(True)
         
@@ -291,13 +291,14 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         
         # File info
         self.file_info = Gtk.Label()
-        self.file_info.set_text("No file loaded")
+        self.file_info.set_markup("<i>No file loaded</i>")
         self.file_info.set_wrap(True)
         self.file_info.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
         self.file_info.set_valign(Gtk.Align.START)
-        self.file_info.set_max_width_chars(40)
+        self.file_info.set_max_width_chars(20)
         self.file_info.set_margin_start(10)
         self.file_info.set_margin_end(10)
+        self.file_info.set_use_markup(True)
         sidebar.append(self.file_info)
         
         # Separator
@@ -368,14 +369,15 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         sidebar.append(selected_title)
         
         self.selected_info = Gtk.Label()
-        self.selected_info.set_text("No box selected")
+        self.selected_info.set_markup("<i>No box selected</i>")
         self.selected_info.set_margin_start(10)
         self.selected_info.set_margin_end(10)
         self.selected_info.set_halign(Gtk.Align.START)
         self.selected_info.set_valign(Gtk.Align.START)
         self.selected_info.set_wrap(True)
         self.selected_info.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
-        self.selected_info.set_max_width_chars(40)
+        self.selected_info.set_max_width_chars(20)
+        self.selected_info.set_use_markup(True)
         sidebar.append(self.selected_info)
         
         # OCR text editor
@@ -762,7 +764,7 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         
         # Update UI
         self.image_info_label.set_text(f"{image_info['index'] + 1}/{image_info['total']}: {image_info['filename']}")
-        self.file_info.set_text(f"Image: {image_info['filename']}\\nDAT: {Path(image_info['dat_path']).name}")
+        self.file_info.set_markup(f"<b>Image:</b> {image_info['filename']}\n<b>DAT:</b> {Path(image_info['dat_path']).name}")
         
         # Update confirmation status
         is_confirmed = self.confirmation_manager.get_confirmation(image_info['path'])
