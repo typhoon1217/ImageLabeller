@@ -287,19 +287,8 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         # Raw DAT display
         self._add_dat_display(sidebar)
         
-        # OCR counts
-        self.ocr_count_label = Gtk.Label()
-        self.ocr_count_label.set_markup("<b>OCR Character Counts</b>\\n<small>No labels</small>")
-        self.ocr_count_label.set_halign(Gtk.Align.START)
-        self.ocr_count_label.set_margin_start(10)
-        self.ocr_count_label.set_margin_end(10)
-        self.ocr_count_label.set_margin_top(10)
-        self.ocr_count_label.set_use_markup(True)
-        self.ocr_count_label.set_wrap(True)
-        self.ocr_count_label.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
-        self.ocr_count_label.set_valign(Gtk.Align.START)
-        self.ocr_count_label.set_max_width_chars(40)
-        sidebar.append(self.ocr_count_label)
+        # OCR counts table
+        self._add_ocr_counts_table(sidebar)
         
         # Another separator
         separator2 = Gtk.Separator()
@@ -332,6 +321,60 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         scrolled_labels.set_child(self.all_labels_text)
         scrolled_labels.set_size_request(-1, 200)
         sidebar.append(scrolled_labels)
+    
+    def _add_ocr_counts_table(self, sidebar):
+        """Add OCR character counts table"""
+        # Title
+        ocr_title = Gtk.Label()
+        ocr_title.set_markup("<b>OCR Character Counts</b>")
+        ocr_title.set_halign(Gtk.Align.START)
+        ocr_title.set_margin_start(10)
+        ocr_title.set_margin_top(10)
+        sidebar.append(ocr_title)
+        
+        # Create scrolled window for the table
+        scrolled_counts = Gtk.ScrolledWindow()
+        scrolled_counts.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scrolled_counts.set_size_request(-1, 100)
+        scrolled_counts.set_margin_start(10)
+        scrolled_counts.set_margin_end(10)
+        scrolled_counts.set_margin_top(5)
+        
+        # Create grid for table layout
+        self.ocr_counts_grid = Gtk.Grid()
+        self.ocr_counts_grid.set_column_spacing(10)
+        self.ocr_counts_grid.set_row_spacing(2)
+        self.ocr_counts_grid.set_margin_start(5)
+        self.ocr_counts_grid.set_margin_end(5)
+        self.ocr_counts_grid.set_margin_top(5)
+        self.ocr_counts_grid.set_margin_bottom(5)
+        
+        # Add headers
+        class_header = Gtk.Label()
+        class_header.set_markup("<b>Class</b>")
+        class_header.set_halign(Gtk.Align.START)
+        self.ocr_counts_grid.attach(class_header, 0, 0, 1, 1)
+        
+        count_header = Gtk.Label()
+        count_header.set_markup("<b>Count</b>")
+        count_header.set_halign(Gtk.Align.END)
+        self.ocr_counts_grid.attach(count_header, 1, 0, 1, 1)
+        
+        # Add separator row
+        separator_line = Gtk.Separator()
+        separator_line.set_margin_top(2)
+        separator_line.set_margin_bottom(2)
+        self.ocr_counts_grid.attach(separator_line, 0, 1, 2, 1)
+        
+        # Add "No labels" row initially
+        no_labels = Gtk.Label()
+        no_labels.set_text("No labels")
+        no_labels.set_halign(Gtk.Align.START)
+        no_labels.add_css_class("dim-label")
+        self.ocr_counts_grid.attach(no_labels, 0, 2, 2, 1)
+        
+        scrolled_counts.set_child(self.ocr_counts_grid)
+        sidebar.append(scrolled_counts)
     
     def _add_label_editor(self, sidebar):
         """Add label editor controls"""
@@ -425,7 +468,7 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         
         # Confirmation checkbox
         self.confirm_checkbox = Gtk.CheckButton(label="✅ Confirmed")
-        self.confirm_checkbox.set_tooltip_text("Toggle confirmation status (Enter key or click checkbox)")
+        self.confirm_checkbox.set_tooltip_text("Toggle confirmation status (when confirming: go to next image)")
         self.confirm_checkbox.connect('toggled', self.on_confirm_toggled)
         self.confirm_checkbox.set_margin_top(10)
         button_box.append(self.confirm_checkbox)
@@ -446,8 +489,8 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         self.label_manager.on_status_update = self.update_status
         self.label_manager.on_error = self.show_error
         
-        # Confirmation manager callbacks
-        self.confirmation_manager.on_confirmation_changed = self._on_confirmation_changed
+        # Confirmation manager callbacks - removed to prevent navigation interference
+        # self.confirmation_manager.on_confirmation_changed = self._on_confirmation_changed
     
     def _setup_css(self):
         """Setup CSS styling"""
@@ -466,6 +509,9 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         .file-invalid-regex { color: #dc2626; }
         .file-error { color: #991b1b; font-style: italic; }
         .file-confirmed { color: #22c55e; font-weight: bold; text-decoration: underline; }
+        
+        /* OCR counts table styling */
+        .dim-label { color: #888888; font-style: italic; }
         
         /* Force software rendering to avoid GL context issues */
         #software-rendered-canvas {
@@ -499,10 +545,8 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         """Handle image changed"""
         self.load_current_image()
     
-    def _on_confirmation_changed(self, file_path: str, confirmed: bool):
-        """Handle confirmation status change"""
-        # Refresh file list to show updated confirmation status
-        self.update_file_list()
+    # Removed _on_confirmation_changed to prevent navigation interference
+    # File list colors will update naturally during navigation
     
     def _load_directory_async(self, directory_path: str):
         """Load directory asynchronously"""
@@ -571,15 +615,49 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
             content = self.label_manager.get_dat_file_content()
             buffer.set_text(content)
             
-            # Update OCR counts
-            counts = self.label_manager.get_ocr_character_counts()
-            if counts:
-                count_text = "<b>OCR Character Counts</b>\\n"
-                for class_name, count in counts.items():
-                    count_text += f"<small>{class_name}: {count} chars</small>\\n"
-                self.ocr_count_label.set_markup(count_text.rstrip())
-            else:
-                self.ocr_count_label.set_markup("<b>OCR Character Counts</b>\\n<small>No labels</small>")
+            # Update OCR counts table
+            self.update_ocr_counts_table()
+    
+    def update_ocr_counts_table(self):
+        """Update OCR character counts table"""
+        if not hasattr(self, 'ocr_counts_grid'):
+            return
+        
+        # Clear existing data rows (keep header and separator)
+        # Remove all children from row 2 onwards
+        child = self.ocr_counts_grid.get_child_at(0, 2)
+        while child:
+            self.ocr_counts_grid.remove(child)
+            child = self.ocr_counts_grid.get_child_at(0, 2)
+        
+        # Get OCR character counts
+        counts = self.label_manager.get_ocr_character_counts()
+        
+        if counts:
+            # Add data rows
+            row = 2
+            for class_name, count in counts.items():
+                # Class name column
+                class_label = Gtk.Label()
+                class_label.set_text(class_name)
+                class_label.set_halign(Gtk.Align.START)
+                self.ocr_counts_grid.attach(class_label, 0, row, 1, 1)
+                
+                # Count column
+                count_label = Gtk.Label()
+                count_label.set_text(str(count))
+                count_label.set_halign(Gtk.Align.END)
+                count_label.add_css_class("monospace")
+                self.ocr_counts_grid.attach(count_label, 1, row, 1, 1)
+                
+                row += 1
+        else:
+            # Add "No labels" row
+            no_labels = Gtk.Label()
+            no_labels.set_text("No labels")
+            no_labels.set_halign(Gtk.Align.START)
+            no_labels.add_css_class("dim-label")
+            self.ocr_counts_grid.attach(no_labels, 0, 2, 2, 1)
     
     def load_current_image(self):
         """Load current image and DAT file"""
@@ -612,8 +690,9 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         self.update_title()
         self.update_all_labels_display()
         
-        # Update file list selection
+        # Update file list selection and colors
         self._updating_selection = True
+        self.update_file_list()  # Update colors without navigation interference
         self.file_list_selection.set_selected(image_info['index'])
         self._updating_selection = False
     
@@ -635,21 +714,11 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
             self.confirm_checkbox.set_active(new_status)
             self.confirm_checkbox.connect('toggled', self.on_confirm_toggled)
             
-            # Auto-advance if confirmed - jump to first unconfirmed image
-            if new_status:
-                # Find first unconfirmed image
-                first_unconfirmed_index = self.project_manager.find_first_unconfirmed_image(
-                    self.confirmation_manager)
-                
-                if first_unconfirmed_index is not None:
-                    # Navigate to first unconfirmed image
-                    self.auto_save_current()
-                    if self.project_manager.navigate_to_image(first_unconfirmed_index):
-                        self.load_current_image()
-                        self.update_navigation_buttons()
-                        # Ensure canvas gets focus for immediate interaction
-                        if hasattr(self, 'canvas'):
-                            self.canvas.grab_focus()
+            # Only advance to next image when confirming (not when unconfirming)
+            if new_status and self.project_manager.get_navigation_state()['can_go_next']:
+                # Go to next image
+                self.on_next_clicked(None)
+            # When unconfirming (new_status is False), stay on current image
     
     def auto_save_current(self):
         """Auto-save current file"""

@@ -327,21 +327,11 @@ class EventHandlerMixin:
                 self.confirmation_manager.set_confirmation(
                     self.project_manager.current_image_path, is_confirmed)
             
-            # Auto-advance if confirmed - jump to first unconfirmed image
-            if is_confirmed:
-                # Find first unconfirmed image
-                first_unconfirmed_index = self.project_manager.find_first_unconfirmed_image(
-                    self.confirmation_manager)
-                
-                if first_unconfirmed_index is not None:
-                    # Navigate to first unconfirmed image
-                    self.auto_save_current()
-                    if self.project_manager.navigate_to_image(first_unconfirmed_index):
-                        self.load_current_image()
-                        self.update_navigation_buttons()
-                        # Ensure canvas gets focus for immediate interaction
-                        if hasattr(self, 'canvas'):
-                            self.canvas.grab_focus()
+            # Only advance to next image when confirming (not when unconfirming)
+            if is_confirmed and self.project_manager.get_navigation_state()['can_go_next']:
+                # Go to next image
+                self.on_next_clicked(None)
+            # When unconfirming, stay on current image (no navigation)
     
     # Keyboard handlers
     def on_window_key_pressed(self, controller, keyval, keycode, state):
@@ -418,18 +408,7 @@ class EventHandlerMixin:
             elif keyval == Gdk.KEY_h or keyval == Gdk.KEY_F1:
                 self.show_help_dialog()
                 return True
-            elif keyval == Gdk.KEY_u:
-                # Jump to first unconfirmed image
-                first_unconfirmed_index = self.project_manager.find_first_unconfirmed_image(
-                    self.confirmation_manager)
-                if first_unconfirmed_index is not None:
-                    self.auto_save_current()
-                    if self.project_manager.navigate_to_image(first_unconfirmed_index):
-                        self.load_current_image()
-                        self.update_navigation_buttons()
-                        if hasattr(self, 'canvas'):
-                            self.canvas.grab_focus()
-                return True
+            # Removed U key shortcut - using simple next image navigation
             elif keyval == Gdk.KEY_Return or keyval == Gdk.KEY_KP_Enter:
                 self.toggle_confirmation()
                 return True
@@ -508,7 +487,6 @@ Replace current text with extracted text?"""
         help_text = """Navigation:
 • ←→ / Space/Backspace - Previous/Next image
 • Ctrl+N/P - Next/Previous image
-• U - Jump to first unconfirmed image
 
 Label Editing:
 • Tab - Select next label
@@ -522,7 +500,7 @@ Text Editing:
 • Ctrl+S/O/Q - Work even when typing in text boxes
 
 Confirmation:
-• Enter - Toggle confirmation status (auto-jump to first unconfirmed)
+• Enter - Toggle confirmation status (when confirming: go to next image)
 
 Zoom & View:
 • +/- - Zoom in/out
