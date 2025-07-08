@@ -33,6 +33,9 @@ class EventHandlerMixin:
             self.auto_save_current()
             self.load_current_image()
             self.update_navigation_buttons()
+            # Ensure canvas gets focus for immediate interaction
+            if hasattr(self, 'canvas'):
+                self.canvas.grab_focus()
     
     def on_next_clicked(self, button):
         """Handle next button click"""
@@ -40,6 +43,9 @@ class EventHandlerMixin:
             self.auto_save_current()
             self.load_current_image()
             self.update_navigation_buttons()
+            # Ensure canvas gets focus for immediate interaction
+            if hasattr(self, 'canvas'):
+                self.canvas.grab_focus()
     
     # Zoom handlers
     def on_zoom_out_clicked(self, button):
@@ -187,6 +193,9 @@ class EventHandlerMixin:
                 self.auto_save_current()
                 if self.project_manager.navigate_to_image(selected):
                     self.load_current_image()
+                    # Ensure canvas gets focus for immediate interaction
+                    if hasattr(self, 'canvas'):
+                        self.canvas.grab_focus()
     
     # Menu action handlers
     def on_open_directory(self, action, param):
@@ -312,8 +321,27 @@ class EventHandlerMixin:
         """Handle confirmation checkbox toggle"""
         if hasattr(self, 'project_manager') and self.project_manager.current_image_path:
             is_confirmed = checkbox.get_active()
-            if hasattr(self, 'confirmation_status'):
-                self.confirmation_status[str(Path(self.project_manager.current_image_path))] = is_confirmed
+            
+            # Update confirmation status
+            if hasattr(self, 'confirmation_manager'):
+                self.confirmation_manager.set_confirmation(
+                    self.project_manager.current_image_path, is_confirmed)
+            
+            # Auto-advance if confirmed - jump to first unconfirmed image
+            if is_confirmed:
+                # Find first unconfirmed image
+                first_unconfirmed_index = self.project_manager.find_first_unconfirmed_image(
+                    self.confirmation_manager)
+                
+                if first_unconfirmed_index is not None:
+                    # Navigate to first unconfirmed image
+                    self.auto_save_current()
+                    if self.project_manager.navigate_to_image(first_unconfirmed_index):
+                        self.load_current_image()
+                        self.update_navigation_buttons()
+                        # Ensure canvas gets focus for immediate interaction
+                        if hasattr(self, 'canvas'):
+                            self.canvas.grab_focus()
     
     # Keyboard handlers
     def on_window_key_pressed(self, controller, keyval, keycode, state):
@@ -365,18 +393,22 @@ class EventHandlerMixin:
             if keyval == Gdk.KEY_Left:
                 if hasattr(self, 'prev_button') and self.prev_button.get_sensitive():
                     self.on_prev_clicked(None)
+                    # Focus is already set in on_prev_clicked
                 return True
             elif keyval == Gdk.KEY_Right:
                 if hasattr(self, 'next_button') and self.next_button.get_sensitive():
                     self.on_next_clicked(None)
+                    # Focus is already set in on_next_clicked
                 return True
             elif keyval == Gdk.KEY_space:
                 if hasattr(self, 'next_button') and self.next_button.get_sensitive():
                     self.on_next_clicked(None)
+                    # Focus is already set in on_next_clicked
                 return True
             elif keyval == Gdk.KEY_BackSpace:
                 if hasattr(self, 'prev_button') and self.prev_button.get_sensitive():
                     self.on_prev_clicked(None)
+                    # Focus is already set in on_prev_clicked
                 return True
             elif keyval == Gdk.KEY_f:
                 if hasattr(self, 'canvas'):
@@ -385,6 +417,18 @@ class EventHandlerMixin:
                 return True
             elif keyval == Gdk.KEY_h or keyval == Gdk.KEY_F1:
                 self.show_help_dialog()
+                return True
+            elif keyval == Gdk.KEY_u:
+                # Jump to first unconfirmed image
+                first_unconfirmed_index = self.project_manager.find_first_unconfirmed_image(
+                    self.confirmation_manager)
+                if first_unconfirmed_index is not None:
+                    self.auto_save_current()
+                    if self.project_manager.navigate_to_image(first_unconfirmed_index):
+                        self.load_current_image()
+                        self.update_navigation_buttons()
+                        if hasattr(self, 'canvas'):
+                            self.canvas.grab_focus()
                 return True
             elif keyval == Gdk.KEY_Return or keyval == Gdk.KEY_KP_Enter:
                 self.toggle_confirmation()
@@ -464,6 +508,7 @@ Replace current text with extracted text?"""
         help_text = """Navigation:
 • ←→ / Space/Backspace - Previous/Next image
 • Ctrl+N/P - Next/Previous image
+• U - Jump to first unconfirmed image
 
 Label Editing:
 • Tab - Select next label
@@ -477,7 +522,7 @@ Text Editing:
 • Ctrl+S/O/Q - Work even when typing in text boxes
 
 Confirmation:
-• Enter - Toggle confirmation status (auto-save and advance if confirming)
+• Enter - Toggle confirmation status (auto-jump to first unconfirmed)
 
 Zoom & View:
 • +/- - Zoom in/out

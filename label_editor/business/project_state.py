@@ -216,6 +216,13 @@ class ProjectManager:
             'validation_summary': validation_summary
         }
     
+    def find_first_unconfirmed_image(self, confirmation_manager) -> Optional[int]:
+        """Find the index of the first unconfirmed image"""
+        for i, file_path in enumerate(self.image_files):
+            if not confirmation_manager.get_confirmation(str(file_path)):
+                return i
+        return None
+    
     def perform_background_save(self, image_path: str, boxes_snapshot: List):
         """Perform background save operation"""
         def save_operation():

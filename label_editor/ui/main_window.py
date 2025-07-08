@@ -491,6 +491,9 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         if file_count > 0:
             self.load_current_image()
             self.update_navigation_buttons()
+            # Ensure canvas gets focus for immediate interaction
+            if hasattr(self, 'canvas'):
+                self.canvas.grab_focus()
     
     def _on_image_changed(self, image_path: str, dat_path):
         """Handle image changed"""
@@ -632,9 +635,21 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
             self.confirm_checkbox.set_active(new_status)
             self.confirm_checkbox.connect('toggled', self.on_confirm_toggled)
             
-            # Auto-advance if confirmed
-            if new_status and self.project_manager.get_navigation_state()['can_go_next']:
-                self.on_next_clicked(None)
+            # Auto-advance if confirmed - jump to first unconfirmed image
+            if new_status:
+                # Find first unconfirmed image
+                first_unconfirmed_index = self.project_manager.find_first_unconfirmed_image(
+                    self.confirmation_manager)
+                
+                if first_unconfirmed_index is not None:
+                    # Navigate to first unconfirmed image
+                    self.auto_save_current()
+                    if self.project_manager.navigate_to_image(first_unconfirmed_index):
+                        self.load_current_image()
+                        self.update_navigation_buttons()
+                        # Ensure canvas gets focus for immediate interaction
+                        if hasattr(self, 'canvas'):
+                            self.canvas.grab_focus()
     
     def auto_save_current(self):
         """Auto-save current file"""
