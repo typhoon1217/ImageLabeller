@@ -128,6 +128,11 @@ class EventHandlerMixin:
         self._editing_in_progress = True
         self.update_title()
         
+        # Update file list colors since validation status may have changed
+        self.update_file_list_colors()
+        # Update directory statistics
+        self.update_directory_stats()
+        
         if hasattr(self, 'canvas') and self.canvas.selected_box:
             box = self.canvas.selected_box
             if hasattr(self, 'selected_info'):
@@ -147,11 +152,15 @@ class EventHandlerMixin:
         """Bind data to list item"""
         label = list_item.get_child()
         string_object = list_item.get_item()
-        filename = string_object.get_string()
-        label.set_text(filename)
+        if string_object:
+            filename = string_object.get_string()
+            label.set_text(filename)
+        else:
+            label.set_text("")
+            return
         
         # Apply validation status styling
-        if hasattr(self, 'file_list_data'):
+        if hasattr(self, 'file_list_data') and self.file_list_data:
             # Find the file info for this item
             position = list_item.get_position()
             if position < len(self.file_list_data):
@@ -236,6 +245,24 @@ class EventHandlerMixin:
                 self.load_image(file.get_path())
         except Exception as e:
             self.show_error(f"Error opening image: {e}")
+    
+    def quick_delete_selected(self):
+        """Quick delete selected label with Y key"""
+        if hasattr(self, 'label_manager') and self.label_manager.selected_box:
+            current_image_path = getattr(self.project_manager, 'current_image_path', None)
+            if self.label_manager.delete_selected_box(current_image_path):
+                self.on_boxes_changed()
+                if hasattr(self, 'canvas'):
+                    self.canvas.queue_draw()
+    
+    def restore_deleted_label(self):
+        """Restore last deleted label with U key"""
+        if hasattr(self, 'label_manager'):
+            current_image_path = getattr(self.project_manager, 'current_image_path', None)
+            if self.label_manager.restore_deleted_label(current_image_path):
+                self.on_boxes_changed()
+                if hasattr(self, 'canvas'):
+                    self.canvas.queue_draw()
     
     def on_save(self, action, param):
         """Handle save action"""
@@ -405,6 +432,12 @@ class EventHandlerMixin:
             elif action == "editing.run_ocr":
                 if hasattr(self, 'ocr_button'):
                     self.on_ocr_clicked(self.ocr_button)
+                return True
+            elif action == "editing.quick_delete":
+                self.quick_delete_selected()
+                return True
+            elif action == "editing.restore_deleted":
+                self.restore_deleted_label()
                 return True
             elif action.startswith("label_selection.focus_label_"):
                 # Extract label number from action

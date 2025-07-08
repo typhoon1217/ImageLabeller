@@ -19,6 +19,8 @@
   "editing": {
     "toggle_confirmation": ["Return", "KP_Enter", "c"],
     "delete_selected": ["Delete"],
+    "quick_delete": ["y"],
+    "restore_deleted": ["u"],
     "select_next_label": ["Tab"],
     "exit_editing": ["Escape"],
     "focus_ocr_textbox": ["x"],

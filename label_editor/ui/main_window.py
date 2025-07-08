@@ -138,8 +138,11 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         
         # File list
         self.file_list_store = Gtk.StringList()
-        self.file_list_selection = Gtk.SingleSelection(model=self.file_list_store)
-        self.file_list_view = Gtk.ListView(model=self.file_list_selection, factory=None)
+        self.file_list_data = []  # Initialize file list data
+        self.file_list_selection = Gtk.SingleSelection()
+        self.file_list_selection.set_model(self.file_list_store)
+        self.file_list_view = Gtk.ListView()
+        self.file_list_view.set_model(self.file_list_selection)
         
         factory = Gtk.SignalListItemFactory()
         factory.connect('setup', self.on_list_setup)
@@ -515,6 +518,8 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         # Update confirmation manager with new directory
         if self.project_manager.current_directory:
             self.confirmation_manager.set_directory(str(self.project_manager.current_directory))
+            # Initialize deletion history database
+            self.label_manager.init_deletion_history_db(str(self.project_manager.current_directory))
         
         self.update_file_list()
         self.update_directory_stats()
@@ -579,12 +584,14 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
     
     def update_file_list_colors(self):
         """Update file list colors without rebuilding the list"""
-        if hasattr(self, 'file_list_store'):
+        if hasattr(self, 'file_list_store') and hasattr(self, 'file_list_selection'):
             # Update the file list data to get latest validation status
             self.file_list_data = self.project_manager.get_file_list()
-            # Force ListView to rebind items by triggering an update
+            # Force ListView to rebind items by triggering model change
             if hasattr(self, 'file_list_view'):
-                self.file_list_view.set_model(self.file_list_store)
+                # Temporarily set to None and back to force rebinding
+                self.file_list_view.set_model(None)
+                self.file_list_view.set_model(self.file_list_selection)
     
     def update_directory_stats(self):
         """Update directory statistics display"""
@@ -791,6 +798,10 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         # Ensure the selected item is visible in the scrolled view
         if hasattr(self, 'file_list_view'):
             self.file_list_view.scroll_to(image_info['index'], Gtk.ListScrollFlags.FOCUS)
+        # Update file list colors to reflect current validation status
+        self.update_file_list_colors()
+        # Update directory statistics
+        self.update_directory_stats()
         self._updating_selection = False
     
     def set_editing_enabled(self, enabled: bool):
@@ -837,6 +848,8 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
                 self.update_title()
                 # Update file list colors to reflect new validation status
                 self.update_file_list_colors()
+                # Update directory statistics
+                self.update_directory_stats()
     
     def load_image(self, image_path: str):
         """Load a single image"""

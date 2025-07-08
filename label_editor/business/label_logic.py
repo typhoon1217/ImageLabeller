@@ -2,6 +2,8 @@
 
 import threading
 import time
+import sqlite3
+import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Callable
 from ..core.data_types import BoundingBox
@@ -20,6 +22,10 @@ class LabelManager:
         self.last_save_time = {}
         self.confirmation_status = {}
         
+        # Deletion history database
+        self.db_path = None
+        self.max_history_size = 20
+        
         # Callbacks
         self.on_box_selected = None
         self.on_boxes_changed = None
@@ -29,10 +35,112 @@ class LabelManager:
     def set_boxes(self, boxes: List[BoundingBox]):
         """Set the current list of boxes"""
         self.boxes = boxes
-        for box in self.boxes:
-            box.name = self.get_class_name(box.class_id)
-        self.selected_box = None
-        self.unsaved_changes = False
+    
+    def init_deletion_history_db(self, directory_path: str):
+        """Initialize deletion history database for current directory"""
+        if not directory_path:
+            return
+        
+        try:
+            # Create database in the same directory as the images
+            db_dir = Path(directory_path)
+            self.db_path = db_dir / "deletion_history.db"
+            
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            
+            # Create table if it doesn't exist
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS deletion_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    image_path TEXT NOT NULL,
+                    deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    x1 INTEGER NOT NULL,
+                    y1 INTEGER NOT NULL,
+                    x2 INTEGER NOT NULL,
+                    y2 INTEGER NOT NULL,
+                    class_id INTEGER NOT NULL,
+                    ocr_text TEXT
+                )
+            ''')
+            
+            conn.commit()
+            conn.close()
+            
+        except Exception as e:
+            print(f"Error initializing deletion history database: {e}")
+            self.db_path = None
+    
+    def save_deleted_box(self, image_path: str, box: BoundingBox):
+        """Save deleted box to history database"""
+        if not self.db_path:
+            return
+        
+        try:
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            
+            # Insert deleted box
+            cursor.execute('''
+                INSERT INTO deletion_history 
+                (image_path, x1, y1, x2, y2, class_id, ocr_text)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (image_path, box.x1, box.y1, box.x2, box.y2, box.class_id, box.ocr_text))
+            
+            # Keep only last 20 deletions per image
+            cursor.execute('''
+                DELETE FROM deletion_history 
+                WHERE image_path = ? AND id NOT IN (
+                    SELECT id FROM deletion_history 
+                    WHERE image_path = ? 
+                    ORDER BY deleted_at DESC 
+                    LIMIT ?
+                )
+            ''', (image_path, image_path, self.max_history_size))
+            
+            conn.commit()
+            conn.close()
+            
+        except Exception as e:
+            print(f"Error saving deleted box: {e}")
+    
+    def restore_last_deleted_box(self, image_path: str) -> Optional[BoundingBox]:
+        """Restore the last deleted box for current image"""
+        if not self.db_path:
+            return None
+        
+        try:
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            
+            # Get the most recent deleted box for this image
+            cursor.execute('''
+                SELECT x1, y1, x2, y2, class_id, ocr_text, id
+                FROM deletion_history 
+                WHERE image_path = ? 
+                ORDER BY deleted_at DESC 
+                LIMIT 1
+            ''', (image_path,))
+            
+            result = cursor.fetchone()
+            if result:
+                x1, y1, x2, y2, class_id, ocr_text, box_id = result
+                
+                # Remove from history
+                cursor.execute('DELETE FROM deletion_history WHERE id = ?', (box_id,))
+                conn.commit()
+                
+                # Create restored box
+                restored_box = BoundingBox(x1, y1, x2, y2, class_id, ocr_text or "")
+                conn.close()
+                return restored_box
+            
+            conn.close()
+            return None
+            
+        except Exception as e:
+            print(f"Error restoring deleted box: {e}")
+            return None
         
     def get_class_name(self, class_id: int) -> str:
         """Get class name by ID"""
@@ -91,15 +199,36 @@ class LabelManager:
         
         return new_box
     
-    def delete_selected_box(self) -> bool:
+    def delete_selected_box(self, current_image_path: str = None) -> bool:
         """Delete the currently selected box"""
         if self.selected_box:
+            # Save to deletion history if image path is provided
+            if current_image_path:
+                self.save_deleted_box(current_image_path, self.selected_box)
+            
             self.boxes.remove(self.selected_box)
             self.selected_box = None
             self.mark_changed()
             
             if self.on_box_selected:
                 self.on_box_selected(None)
+            
+            return True
+        return False
+    
+    def restore_deleted_label(self, current_image_path: str) -> bool:
+        """Restore the last deleted label for current image"""
+        if not current_image_path:
+            return False
+        
+        restored_box = self.restore_last_deleted_box(current_image_path)
+        if restored_box:
+            self.boxes.append(restored_box)
+            self.selected_box = restored_box
+            self.mark_changed()
+            
+            if self.on_box_selected:
+                self.on_box_selected(restored_box)
             
             return True
         return False
