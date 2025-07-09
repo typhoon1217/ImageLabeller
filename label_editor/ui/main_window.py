@@ -758,7 +758,7 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         if hasattr(self, 'all_labels_text') and hasattr(self, 'canvas'):
             buffer = self.all_labels_text.get_buffer()
             content = self.label_manager.get_dat_file_content()
-            buffer.set_text(content)
+            buffer.set_text(content, -1)
             
             # Update OCR counts table
             self.update_ocr_counts_table()

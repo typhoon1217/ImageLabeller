@@ -101,7 +101,7 @@ class EventHandlerMixin:
             
             if hasattr(self, 'ocr_text'):
                 buffer = self.ocr_text.get_buffer()
-                buffer.set_text(box.ocr_text)
+                buffer.set_text(box.ocr_text, -1)
             
             if hasattr(self, 'class_combo'):
                 class_index = 0
@@ -117,7 +117,7 @@ class EventHandlerMixin:
             if hasattr(self, 'selected_info'):
                 self.selected_info.set_markup("<i>No box selected</i>")
             if hasattr(self, 'ocr_text'):
-                self.ocr_text.get_buffer().set_text("")
+                self.ocr_text.get_buffer().set_text("", -1)
             self.set_editing_enabled(False)
         
         self.update_all_labels_display()
@@ -485,7 +485,7 @@ class EventHandlerMixin:
             elif action.startswith("label_adjustment."):
                 # Handle label adjustment actions
                 if hasattr(self, 'canvas') and self.canvas.selected_box:
-                    self.handle_label_adjustment(action)
+                    self.handle_label_adjustment(action, state)
                     return True
         
         return False
@@ -522,14 +522,18 @@ class EventHandlerMixin:
         if hasattr(self, 'ocr_text') and hasattr(self, 'canvas') and self.canvas.selected_box:
             self.ocr_text.grab_focus()
     
-    def handle_label_adjustment(self, action: str):
+    def handle_label_adjustment(self, action: str, state):
         """Handle label position and size adjustment"""
         if not hasattr(self, 'canvas') or not self.canvas.selected_box:
             return
         
         box = self.canvas.selected_box
-        adjustment_step = 5  # pixels for movement
-        resize_step = 5      # pixels for resizing
+        
+        # Check if Shift is pressed for fine adjustment
+        shift_pressed = (state & Gdk.ModifierType.SHIFT_MASK) != 0
+        
+        adjustment_step = 1 if shift_pressed else 5  # pixels for movement
+        resize_step = 1 if shift_pressed else 5      # pixels for resizing
         
         if action == "label_adjustment.move_up":
             box.y = max(0, box.y - adjustment_step)
@@ -599,7 +603,7 @@ Replace current text with extracted text?"""
         def on_response(d, response):
             if response == Gtk.ResponseType.YES and hasattr(self, 'ocr_text'):
                 buffer = self.ocr_text.get_buffer()
-                buffer.set_text(extracted_text)
+                buffer.set_text(extracted_text, -1)
             d.destroy()
         
         dialog.connect('response', on_response)
@@ -621,50 +625,140 @@ Replace current text with extracted text?"""
             text="Keyboard Shortcuts"
         )
         
-        help_text = """Navigation:
-• A/D or ←→ or Space/Backspace - Previous/Next image
-• Ctrl+N/P - Next/Previous image (alternative)
-
-Label Editing:
-• Tab - Select next label
-• 1-9, 0 - Focus on label N (by class order, 0=label 10)
-• X - Focus OCR text box for editing
-• Z - Run OCR on selected label
-• Delete - Delete selected label
-• Esc - Exit text editing / Deselect all labels
-
-Label Adjustment (when selected):
-• W/S - Move label up/down
-• Q/E - Move label left/right
-• R/T - Decrease/increase width
-• F/G - Decrease/increase height
-
-Text Editing:
-• Global shortcuts work everywhere except when typing in text boxes
-• Esc - Exit text editing mode and return to global shortcuts
-• Ctrl+S/O - Work even when typing in text boxes
-
-Confirmation:
-• Enter or C - Toggle confirmation status (when confirming: go to next image)
-
-Zoom & View:
-• +/- or B/V - Zoom in/out
-• N - Reset zoom (fit to window)
-• Scroll wheel - Zoom in/out
-• Middle click + drag - Pan image
-
-File Operations:
-• Ctrl+O - Open directory
-• Ctrl+S - Manual save current labels
-• Labels are auto-saved automatically
-
-Help:
-• H / F1 - Show this help
-
-Configuration:
-• Keyboard shortcuts are configurable in keymap.json"""
+        # Set dialog size
+        dialog.set_default_size(600, 500)
         
-        dialog.set_property("secondary-text", help_text)
+        # Build help text from actual keymap
+        help_sections = []
+        
+        # Navigation section
+        nav_keys = []
+        if hasattr(self, 'keymap_manager'):
+            prev_keys = self.keymap_manager.get_keys_for_action('navigation.previous_image')
+            next_keys = self.keymap_manager.get_keys_for_action('navigation.next_image')
+            if prev_keys and next_keys:
+                nav_keys.append(f"• {'/'.join(prev_keys)} - Previous image")
+                nav_keys.append(f"• {'/'.join(next_keys)} - Next image")
+        
+        if nav_keys:
+            help_sections.append("Navigation:\n" + "\n".join(nav_keys))
+        
+        # Label Selection section
+        label_keys = []
+        if hasattr(self, 'keymap_manager'):
+            for i in range(1, 11):
+                action = f'label_selection.focus_label_{i}'
+                keys = self.keymap_manager.get_keys_for_action(action)
+                if keys:
+                    label_num = "10" if i == 10 else str(i)
+                    label_keys.append(f"• {'/'.join(keys)} - Focus on label {label_num}")
+        
+        if label_keys:
+            help_sections.append("\nLabel Selection:\n" + "\n".join(label_keys))
+        
+        # Editing section
+        edit_keys = []
+        if hasattr(self, 'keymap_manager'):
+            edit_actions = [
+                ('editing.select_next_label', 'Select next label'),
+                ('editing.focus_ocr_textbox', 'Focus OCR text box'),
+                ('editing.run_ocr', 'Run OCR on selected label'),
+                ('editing.delete_selected', 'Delete selected label'),
+                ('editing.quick_delete', 'Quick delete (no confirmation)'),
+                ('editing.restore_deleted', 'Restore last deleted label'),
+                ('editing.toggle_confirmation', 'Toggle confirmation status'),
+                ('editing.exit_editing', 'Exit text editing / Deselect all')
+            ]
+            
+            for action, description in edit_actions:
+                keys = self.keymap_manager.get_keys_for_action(action)
+                if keys:
+                    edit_keys.append(f"• {'/'.join(keys)} - {description}")
+        
+        if edit_keys:
+            help_sections.append("\nLabel Editing:\n" + "\n".join(edit_keys))
+        
+        # Label Adjustment section
+        adjust_keys = []
+        if hasattr(self, 'keymap_manager'):
+            adjust_actions = [
+                ('label_adjustment.move_up', 'Move label up (5px, or 1px with Shift)'),
+                ('label_adjustment.move_down', 'Move label down (5px, or 1px with Shift)'),
+                ('label_adjustment.move_left', 'Move label left (5px, or 1px with Shift)'),
+                ('label_adjustment.move_right', 'Move label right (5px, or 1px with Shift)'),
+                ('label_adjustment.resize_width_decrease', 'Decrease width (5px, or 1px with Shift)'),
+                ('label_adjustment.resize_width_increase', 'Increase width (5px, or 1px with Shift)'),
+                ('label_adjustment.resize_height_decrease', 'Decrease height (5px, or 1px with Shift)'),
+                ('label_adjustment.resize_height_increase', 'Increase height (5px, or 1px with Shift)')
+            ]
+            
+            for action, description in adjust_actions:
+                keys = self.keymap_manager.get_keys_for_action(action)
+                if keys:
+                    adjust_keys.append(f"• {'/'.join(keys)} - {description}")
+        
+        if adjust_keys:
+            help_sections.append("\nLabel Adjustment (when selected):\n" + "\n".join(adjust_keys))
+        
+        # System section
+        system_keys = []
+        if hasattr(self, 'keymap_manager'):
+            system_actions = [
+                ('system.save', 'Manual save current labels'),
+                ('system.open_directory', 'Open directory'),
+                ('system.show_help', 'Show this help'),
+                ('system.zoom_in', 'Zoom in'),
+                ('system.zoom_out', 'Zoom out'),
+                ('system.reset_zoom', 'Reset zoom (fit to window)')
+            ]
+            
+            for action, description in system_actions:
+                keys = self.keymap_manager.get_keys_for_action(action)
+                if keys:
+                    system_keys.append(f"• {'/'.join(keys)} - {description}")
+        
+        if system_keys:
+            help_sections.append("\nSystem:\n" + "\n".join(system_keys))
+        
+        # Additional info
+        additional_info = [
+            "\nText Editing:",
+            "• Global shortcuts work everywhere except when typing in text boxes",
+            "• Esc - Exit text editing mode and return to global shortcuts",
+            "• Ctrl+S/O - Work even when typing in text boxes",
+            "\nMouse Controls:",
+            "• Click and drag - Create new bounding box",
+            "• Click on box - Select box",
+            "• Scroll wheel - Zoom in/out",
+            "• Middle click + drag - Pan image",
+            "\nOther:",
+            "• Labels are auto-saved automatically",
+            "\nConfiguration:",
+            "• Keyboard shortcuts are configurable in keymap.json"
+        ]
+        
+        help_text = "\n".join(help_sections + additional_info)
+        
+        # Create a scrollable text view for the help content
+        content_area = dialog.get_content_area()
+        scrolled_window = Gtk.ScrolledWindow()
+        scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        scrolled_window.set_size_request(580, 400)
+        
+        text_view = Gtk.TextView()
+        text_view.set_editable(False)
+        text_view.set_wrap_mode(Gtk.WrapMode.WORD)
+        text_view.set_margin_top(10)
+        text_view.set_margin_bottom(10)
+        text_view.set_margin_start(10)
+        text_view.set_margin_end(10)
+        
+        buffer = text_view.get_buffer()
+        buffer.set_text(help_text)
+        
+        scrolled_window.set_child(text_view)
+        content_area.append(scrolled_window)
+        
         dialog.connect('response', lambda d, r: d.destroy())
         dialog.present()
     
