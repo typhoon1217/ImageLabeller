@@ -343,24 +343,35 @@ class EventHandlerMixin:
     
     def on_ocr_clicked(self, button):
         """Handle OCR button click"""
+        print("[OCR] on_ocr_clicked called")
+        
         if (not hasattr(self, 'canvas') or not self.canvas.selected_box or 
             not hasattr(self, 'project_manager') or not self.project_manager.current_image_path):
+            print("[OCR] Validation failed - missing canvas, selected_box, or current_image_path")
             self.show_error("Please select a label first")
             return
+        
+        print(f"[OCR] Selected box: {self.canvas.selected_box}")
+        print(f"[OCR] Current image: {self.project_manager.current_image_path}")
         
         button.set_label("⏳ Processing...")
         button.set_sensitive(False)
         
         # Setup OCR processor
         if not hasattr(self, 'ocr_processor'):
+            print("[OCR] Creating new OCRProcessor")
             self.ocr_processor = OCRProcessor(self.project_manager.class_config)
             self.ocr_processor.on_ocr_complete = lambda text, current: self._ocr_complete(button, text)
             self.ocr_processor.on_ocr_error = lambda error: self._ocr_error(button, error)
+        else:
+            print("[OCR] Using existing OCRProcessor")
         
+        print("[OCR] Starting OCR processing...")
         self.ocr_processor.process_ocr(
             self.project_manager.current_image_path, 
             self.canvas.selected_box
         )
+        print("[OCR] OCR processing started")
     
     def on_confirm_toggled(self, checkbox):
         """Handle confirmation checkbox toggle"""
@@ -461,8 +472,12 @@ class EventHandlerMixin:
                 self.focus_ocr_textbox()
                 return True
             elif action == "editing.run_ocr":
+                print("[OCR] run_ocr action triggered from keyboard")
                 if hasattr(self, 'ocr_button'):
+                    print("[OCR] Calling on_ocr_clicked")
                     self.on_ocr_clicked(self.ocr_button)
+                else:
+                    print("[OCR] No ocr_button found")
                 return True
             elif action == "editing.quick_delete":
                 self.quick_delete_selected()
@@ -575,45 +590,79 @@ class EventHandlerMixin:
     # Helper methods for OCR
     def _ocr_complete(self, button, extracted_text):
         """Handle OCR completion"""
-        button.set_label("🔍 Run OCR")
-        button.set_sensitive(True)
+        print(f"[OCR] _ocr_complete called with text: '{extracted_text}'")
         
-        if not extracted_text.strip():
-            self.show_info("No text detected in the selected region")
-            return
-        
-        current_text = ""
-        if hasattr(self, 'canvas') and self.canvas.selected_box:
-            current_text = self.canvas.selected_box.ocr_text
-        
-        dialog = Gtk.MessageDialog(
-            transient_for=self,
-            message_type=Gtk.MessageType.QUESTION,
-            buttons=Gtk.ButtonsType.YES_NO,
-            text="OCR Text Extracted"
-        )
-        
-        dialog_text = f"""Extracted text: {extracted_text}
+        def update_ui():
+            print("[OCR] Updating UI in main thread")
+            try:
+                button.set_label("🔍 Run OCR")
+                button.set_sensitive(True)
+                
+                if not extracted_text.strip():
+                    print("[OCR] No text extracted, showing info dialog")
+                    self.show_info("No text detected in the selected region")
+                    return False
+                
+                current_text = ""
+                if hasattr(self, 'canvas') and self.canvas.selected_box:
+                    current_text = self.canvas.selected_box.ocr_text or ""
+                
+                print(f"[OCR] Creating dialog, current_text: '{current_text}'")
+                dialog = Gtk.MessageDialog(
+                    transient_for=self,
+                    message_type=Gtk.MessageType.QUESTION,
+                    buttons=Gtk.ButtonsType.YES_NO,
+                    text="OCR Text Extracted"
+                )
+                
+                dialog_text = f"""Extracted text: {extracted_text}
 
 Current text: {current_text}
 
 Replace current text with extracted text?"""
-        dialog.set_property("secondary-text", dialog_text)
+                dialog.set_property("secondary-text", dialog_text)
+                
+                def on_response(d, response):
+                    print(f"[OCR] Dialog response: {response}")
+                    if response == Gtk.ResponseType.YES and hasattr(self, 'ocr_text'):
+                        buffer = self.ocr_text.get_buffer()
+                        buffer.set_text(extracted_text, -1)
+                        print("[OCR] Text updated in buffer")
+                    d.destroy()
+                
+                dialog.connect('response', on_response)
+                dialog.present()
+                print("[OCR] Dialog presented")
+                return False  # Don't repeat this idle callback
+            except Exception as e:
+                print(f"[OCR] Error in UI update: {e}")
+                import traceback
+                traceback.print_exc()
+                return False
         
-        def on_response(d, response):
-            if response == Gtk.ResponseType.YES and hasattr(self, 'ocr_text'):
-                buffer = self.ocr_text.get_buffer()
-                buffer.set_text(extracted_text, -1)
-            d.destroy()
-        
-        dialog.connect('response', on_response)
-        dialog.present()
+        # Use GLib.idle_add to marshal to main thread
+        GLib.idle_add(update_ui)
     
     def _ocr_error(self, button, error_message):
         """Handle OCR error"""
-        button.set_label("🔍 Run OCR")
-        button.set_sensitive(True)
-        self.show_error(error_message)
+        print(f"[OCR] _ocr_error called with message: '{error_message}'")
+        
+        def update_ui():
+            print("[OCR] Updating UI after error in main thread")
+            try:
+                button.set_label("🔍 Run OCR")
+                button.set_sensitive(True)
+                self.show_error(error_message)
+                print("[OCR] Error dialog shown")
+                return False  # Don't repeat this idle callback
+            except Exception as e:
+                print(f"[OCR] Error in error UI update: {e}")
+                import traceback
+                traceback.print_exc()
+                return False
+        
+        # Use GLib.idle_add to marshal to main thread
+        GLib.idle_add(update_ui)
     
     # Dialog helpers
     def show_help_dialog(self):

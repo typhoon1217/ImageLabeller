@@ -385,28 +385,41 @@ class OCRProcessor:
     def _run_ocr_thread(self, image_path: str, box: BoundingBox, callback: Callable = None):
         """Run OCR in background thread"""
         try:
+            print(f"[OCR] Starting OCR thread for image: {image_path}")
+            print(f"[OCR] Box coordinates: x={box.x}, y={box.y}, w={box.width}, h={box.height}, class_id={box.class_id}")
+            
             # Import dependencies
             try:
+                print("[OCR] Importing dependencies...")
                 import pytesseract
                 from PIL import Image
                 import cv2
                 import numpy as np
+                print("[OCR] Dependencies imported successfully")
             except ImportError as e:
+                print(f"[OCR] Import error: {e}")
                 error_msg = f"Required OCR libraries not available: {str(e)}\nInstall: pip install pytesseract pillow opencv-python"
                 if self.on_ocr_error:
                     self.on_ocr_error(error_msg)
                 return
             
             # Load image
+            print(f"[OCR] Loading image: {image_path}")
             image = cv2.imread(image_path)
             if image is None:
+                print("[OCR] Failed to load image")
                 if self.on_ocr_error:
                     self.on_ocr_error("Failed to load image")
                 return
             
+            print(f"[OCR] Image loaded successfully, shape: {image.shape}")
+            
             # Extract ROI
             x, y, w, h = int(box.x), int(box.y), int(box.width), int(box.height)
             img_height, img_width = image.shape[:2]
+            
+            print(f"[OCR] Original coordinates: x={x}, y={y}, w={w}, h={h}")
+            print(f"[OCR] Image dimensions: {img_width}x{img_height}")
             
             # Clamp coordinates
             x = max(0, min(x, img_width - 1))
@@ -414,40 +427,84 @@ class OCRProcessor:
             w = max(1, min(w, img_width - x))
             h = max(1, min(h, img_height - y))
             
+            print(f"[OCR] Clamped coordinates: x={x}, y={y}, w={w}, h={h}")
+            
             roi = image[y:y+h, x:x+w]
+            print(f"[OCR] ROI extracted, shape: {roi.shape}")
             
             if roi.size == 0:
+                print("[OCR] ROI size is 0")
                 if self.on_ocr_error:
                     self.on_ocr_error("Invalid label region")
                 return
             
             # Preprocess image
-            processed_roi = ImageOperations.preprocess_image_by_field_type(
-                roi, box.class_id, self.class_config)
+            print("[OCR] Starting image preprocessing...")
+            try:
+                processed_roi = ImageOperations.preprocess_image_by_field_type(
+                    roi, box.class_id, self.class_config)
+                print(f"[OCR] Image preprocessing completed, shape: {processed_roi.shape}")
+            except Exception as e:
+                print(f"[OCR] Preprocessing error: {e}")
+                processed_roi = roi  # Fallback to original ROI
             
             # Convert to PIL Image
-            pil_image = Image.fromarray(processed_roi)
+            print("[OCR] Converting to PIL Image...")
+            try:
+                pil_image = Image.fromarray(processed_roi)
+                print(f"[OCR] PIL Image created, mode: {pil_image.mode}, size: {pil_image.size}")
+            except Exception as e:
+                print(f"[OCR] PIL conversion error: {e}")
+                # Try with RGB conversion
+                if len(processed_roi.shape) == 3:
+                    processed_roi = cv2.cvtColor(processed_roi, cv2.COLOR_BGR2RGB)
+                pil_image = Image.fromarray(processed_roi)
+                print(f"[OCR] PIL Image created after RGB conversion, mode: {pil_image.mode}")
             
             # Get Tesseract config
-            custom_config = ImageOperations.get_tesseract_config_for_class(
-                box.class_id, self.class_config)
+            print("[OCR] Getting Tesseract config...")
+            try:
+                custom_config = ImageOperations.get_tesseract_config_for_class(
+                    box.class_id, self.class_config)
+                print(f"[OCR] Tesseract config: {custom_config}")
+            except Exception as e:
+                print(f"[OCR] Config error: {e}")
+                custom_config = ""  # Fallback to default config
             
             # Run OCR
-            extracted_text = pytesseract.image_to_string(
-                pil_image, config=custom_config).strip()
+            print("[OCR] Running Tesseract OCR...")
+            try:
+                extracted_text = pytesseract.image_to_string(
+                    pil_image, config=custom_config).strip()
+                print(f"[OCR] OCR completed, extracted text: '{extracted_text}'")
+            except Exception as e:
+                print(f"[OCR] Tesseract error: {e}")
+                raise
             
             # Post-process text
-            final_text = ImageOperations.postprocess_text_by_field_type(
-                extracted_text, box.class_id, self.class_config)
+            print("[OCR] Post-processing text...")
+            try:
+                final_text = ImageOperations.postprocess_text_by_field_type(
+                    extracted_text, box.class_id, self.class_config)
+                print(f"[OCR] Post-processing completed, final text: '{final_text}'")
+            except Exception as e:
+                print(f"[OCR] Post-processing error: {e}")
+                final_text = extracted_text  # Fallback to raw text
             
             # Call completion callback
+            print("[OCR] Calling completion callback...")
             if self.on_ocr_complete:
                 self.on_ocr_complete(final_text, box.ocr_text)
             
             if callback:
                 callback(final_text)
+            
+            print("[OCR] OCR thread completed successfully")
                 
         except Exception as e:
+            print(f"[OCR] Exception in OCR thread: {str(e)}")
+            import traceback
+            traceback.print_exc()
             if self.on_ocr_error:
                 self.on_ocr_error(f"OCR error: {str(e)}")
 
