@@ -465,10 +465,25 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         
         # OCR button
         ocr_button = Gtk.Button(label="🔍 Run OCR")
-        ocr_button.set_tooltip_text("Extract text from selected label area using Tesseract OCR optimized for MRZ")
+        ocr_button.set_tooltip_text("Extract text from selected label area using selected OCR engine")
         ocr_button.connect('clicked', self.on_ocr_clicked)
         button_box.append(ocr_button)
         self.ocr_button = ocr_button
+        
+        # OCR model selection dropdown
+        ocr_model_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        ocr_model_label = Gtk.Label(label="OCR Model:")
+        ocr_model_box.append(ocr_model_label)
+        
+        self.ocr_model_combo = Gtk.ComboBoxText()
+        self.ocr_model_combo.append("tesseract", "Tesseract")
+        self.ocr_model_combo.append("easyocr", "EasyOCR")
+        self.ocr_model_combo.append("paddleocr", "PaddleOCR")
+        self.ocr_model_combo.set_active_id("tesseract")  # Default to Tesseract
+        self.ocr_model_combo.set_tooltip_text("Select OCR engine to use")
+        ocr_model_box.append(self.ocr_model_combo)
+        
+        button_box.append(ocr_model_box)
         
         # Confirmation checkbox
         self.confirm_checkbox = Gtk.CheckButton(label="✅ Confirmed")

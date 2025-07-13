@@ -375,14 +375,15 @@ class OCRProcessor:
         self.on_ocr_complete = None
         self.on_ocr_error = None
         self.on_status_update = None
+        self.easyocr_reader = None  # Will be initialized on first use
     
-    def process_ocr(self, image_path: str, box: BoundingBox, callback: Callable = None):
-        """Process OCR for a bounding box"""
-        thread = threading.Thread(target=self._run_ocr_thread, args=(image_path, box, callback))
+    def process_ocr(self, image_path: str, box: BoundingBox, ocr_engine: str = "tesseract", callback: Callable = None):
+        """Process OCR for a bounding box with specified OCR engine"""
+        thread = threading.Thread(target=self._run_ocr_thread, args=(image_path, box, ocr_engine, callback))
         thread.daemon = True
         thread.start()
     
-    def _run_ocr_thread(self, image_path: str, box: BoundingBox, callback: Callable = None):
+    def _run_ocr_thread(self, image_path: str, box: BoundingBox, ocr_engine: str = "tesseract", callback: Callable = None):
         """Run OCR in background thread"""
         try:
             print(f"[OCR] Starting OCR thread for image: {image_path}")
@@ -461,35 +462,15 @@ class OCRProcessor:
                 pil_image = Image.fromarray(processed_roi)
                 print(f"[OCR] PIL Image created after RGB conversion, mode: {pil_image.mode}")
             
-            # Get Tesseract config
-            print("[OCR] Getting Tesseract config...")
-            try:
-                custom_config = ImageOperations.get_tesseract_config_for_class(
-                    box.class_id, self.class_config)
-                print(f"[OCR] Tesseract config: {custom_config}")
-            except Exception as e:
-                print(f"[OCR] Config error: {e}")
-                custom_config = ""  # Fallback to default config
+            # Run OCR based on selected engine
+            print(f"[OCR] Using OCR engine: {ocr_engine}")
             
-            # Run OCR
-            print("[OCR] Running Tesseract OCR...")
-            try:
-                extracted_text = pytesseract.image_to_string(
-                    pil_image, config=custom_config).strip()
-                print(f"[OCR] OCR completed, extracted text: '{extracted_text}'")
-            except Exception as e:
-                print(f"[OCR] Tesseract error: {e}")
-                raise
-            
-            # Post-process text
-            print("[OCR] Post-processing text...")
-            try:
-                final_text = ImageOperations.postprocess_text_by_field_type(
-                    extracted_text, box.class_id, self.class_config)
-                print(f"[OCR] Post-processing completed, final text: '{final_text}'")
-            except Exception as e:
-                print(f"[OCR] Post-processing error: {e}")
-                final_text = extracted_text  # Fallback to raw text
+            if ocr_engine == "tesseract":
+                final_text = self._run_tesseract_ocr(pil_image, box)
+            elif ocr_engine == "easyocr":
+                final_text = self._run_easyocr_ocr(pil_image, box)
+            else:
+                raise ValueError(f"Unknown OCR engine: {ocr_engine}")
             
             # Call completion callback
             print("[OCR] Calling completion callback...")
@@ -507,6 +488,147 @@ class OCRProcessor:
             traceback.print_exc()
             if self.on_ocr_error:
                 self.on_ocr_error(f"OCR error: {str(e)}")
+    
+    def _run_tesseract_ocr(self, pil_image, box: BoundingBox) -> str:
+        """Run Tesseract OCR on the image"""
+        print("[OCR] Running Tesseract OCR...")
+        
+        # Import Tesseract
+        try:
+            import pytesseract
+        except ImportError as e:
+            raise ImportError("Tesseract not available. Install: pip install pytesseract")
+        
+        # Get Tesseract config
+        print("[OCR] Getting Tesseract config...")
+        try:
+            custom_config = ImageOperations.get_tesseract_config_for_class(
+                box.class_id, self.class_config)
+            print(f"[OCR] Tesseract config: {custom_config}")
+        except Exception as e:
+            print(f"[OCR] Config error: {e}")
+            custom_config = ""  # Fallback to default config
+        
+        # Run OCR
+        try:
+            extracted_text = pytesseract.image_to_string(
+                pil_image, config=custom_config).strip()
+            print(f"[OCR] Tesseract completed, extracted text: '{extracted_text}'")
+        except Exception as e:
+            print(f"[OCR] Tesseract error: {e}")
+            raise
+        
+        # Post-process text
+        print("[OCR] Post-processing text...")
+        try:
+            final_text = ImageOperations.postprocess_text_by_field_type(
+                extracted_text, box.class_id, self.class_config)
+            print(f"[OCR] Post-processing completed, final text: '{final_text}'")
+        except Exception as e:
+            print(f"[OCR] Post-processing error: {e}")
+            final_text = extracted_text  # Fallback to raw text
+        
+        return final_text
+    
+    def _run_easyocr_ocr(self, pil_image, box: BoundingBox) -> str:
+        """Run EasyOCR on the image"""
+        print("[OCR] Running EasyOCR...")
+        
+        # Import EasyOCR and numpy
+        try:
+            import easyocr
+            import numpy as np
+        except ImportError as e:
+            raise ImportError("EasyOCR not available. Install: pip install easyocr")
+        
+        # Initialize reader if not already done
+        if self.easyocr_reader is None:
+            print("[OCR] Initializing EasyOCR reader...")
+            self.easyocr_reader = easyocr.Reader(['en'])
+            print("[OCR] EasyOCR reader initialized")
+        
+        # Convert PIL image to numpy array
+        np_image = np.array(pil_image)
+        
+        # Run EasyOCR
+        try:
+            results = self.easyocr_reader.readtext(np_image)
+            
+            # Extract text from results
+            extracted_text = " ".join([result[1] for result in results]).strip()
+            print(f"[OCR] EasyOCR completed, extracted text: '{extracted_text}'")
+        except Exception as e:
+            print(f"[OCR] EasyOCR error: {e}")
+            raise
+        
+        # Post-process text
+        print("[OCR] Post-processing text...")
+        try:
+            final_text = ImageOperations.postprocess_text_by_field_type(
+                extracted_text, box.class_id, self.class_config)
+            print(f"[OCR] Post-processing completed, final text: '{final_text}'")
+        except Exception as e:
+            print(f"[OCR] Post-processing error: {e}")
+            final_text = extracted_text  # Fallback to raw text
+        
+        return final_text
+    
+    def _run_paddleocr_ocr(self, pil_image, box: BoundingBox) -> str:
+        """Run PaddleOCR on the image"""
+        print("[OCR] Running PaddleOCR...")
+        
+        # Import PaddleOCR
+        try:
+            from paddleocr import PaddleOCR
+            import numpy as np
+        except ImportError as e:
+            raise ImportError("PaddleOCR not available. Install: pip install paddlepaddle paddleocr")
+        
+        # Initialize PaddleOCR if not already done
+        if not hasattr(self, 'paddleocr_reader') or self.paddleocr_reader is None:
+            print("[OCR] Initializing PaddleOCR reader...")
+            # Use English model with GPU disabled for compatibility
+            self.paddleocr_reader = PaddleOCR(
+                use_angle_cls=True,
+                lang='en',
+                use_gpu=False,
+                show_log=False
+            )
+            print("[OCR] PaddleOCR reader initialized")
+        
+        # Convert PIL image to numpy array
+        np_image = np.array(pil_image)
+        
+        # Run PaddleOCR
+        try:
+            results = self.paddleocr_reader.ocr(np_image, cls=True)
+            
+            # Extract text from results
+            extracted_text = ""
+            if results and len(results) > 0 and results[0]:
+                # PaddleOCR returns nested list structure
+                for line in results[0]:
+                    if len(line) > 1 and len(line[1]) > 0:
+                        text = line[1][0]  # Get text part
+                        extracted_text += text + " "
+            
+            extracted_text = extracted_text.strip()
+            print(f"[OCR] PaddleOCR completed, extracted text: '{extracted_text}'")
+        except Exception as e:
+            print(f"[OCR] PaddleOCR error: {e}")
+            raise
+        
+        # Post-process text
+        print("[OCR] Post-processing text...")
+        try:
+            final_text = ImageOperations.postprocess_text_by_field_type(
+                extracted_text, box.class_id, self.class_config)
+            print(f"[OCR] Post-processing completed, final text: '{final_text}'")
+        except Exception as e:
+            print(f"[OCR] Post-processing error: {e}")
+            final_text = extracted_text  # Fallback to raw text
+        
+        return final_text
 
 
 class ConfirmationManager:

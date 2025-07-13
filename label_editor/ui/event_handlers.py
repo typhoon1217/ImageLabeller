@@ -366,10 +366,17 @@ class EventHandlerMixin:
         else:
             print("[OCR] Using existing OCRProcessor")
         
+        # Get selected OCR engine from dropdown
+        ocr_engine = "tesseract"  # Default
+        if hasattr(self, 'ocr_model_combo'):
+            ocr_engine = self.ocr_model_combo.get_active_id()
+            print(f"[OCR] Selected OCR engine: {ocr_engine}")
+        
         print("[OCR] Starting OCR processing...")
         self.ocr_processor.process_ocr(
             self.project_manager.current_image_path, 
-            self.canvas.selected_box
+            self.canvas.selected_box,
+            ocr_engine
         )
         print("[OCR] OCR processing started")
     
