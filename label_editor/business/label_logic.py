@@ -376,6 +376,7 @@ class OCRProcessor:
         self.on_ocr_error = None
         self.on_status_update = None
         self.easyocr_reader = None  # Will be initialized on first use
+        self.paddleocr_reader = None  # Will be initialized on first use
     
     def process_ocr(self, image_path: str, box: BoundingBox, ocr_engine: str = "tesseract", callback: Callable = None):
         """Process OCR for a bounding box with specified OCR engine"""
@@ -469,6 +470,8 @@ class OCRProcessor:
                 final_text = self._run_tesseract_ocr(pil_image, box)
             elif ocr_engine == "easyocr":
                 final_text = self._run_easyocr_ocr(pil_image, box)
+            elif ocr_engine == "paddleocr":
+                final_text = self._run_paddleocr_ocr(pil_image, box)
             else:
                 raise ValueError(f"Unknown OCR engine: {ocr_engine}")
             
