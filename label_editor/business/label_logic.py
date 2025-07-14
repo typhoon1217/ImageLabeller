@@ -376,7 +376,7 @@ class OCRProcessor:
         self.on_ocr_error = None
         self.on_status_update = None
         self.easyocr_reader = None  # Will be initialized on first use
-        self.paddleocr_reader = None  # Will be initialized on first use
+        # Note: PaddleOCR instances are created fresh each time to avoid threading issues
     
     def process_ocr(self, image_path: str, box: BoundingBox, ocr_engine: str = "tesseract", callback: Callable = None):
         """Process OCR for a bounding box with specified OCR engine"""
@@ -580,46 +580,75 @@ class OCRProcessor:
         """Run PaddleOCR on the image"""
         print("[OCR] Running PaddleOCR...")
         
-        # Import PaddleOCR
+        # Import PaddleOCR - check what's available
         try:
             from paddleocr import PaddleOCR
+            from PIL import Image
             import numpy as np
+            print("[OCR] Using PaddleOCR API")
         except ImportError as e:
-            raise ImportError("PaddleOCR not available. Install: pip install paddlepaddle paddleocr")
+            raise ImportError("PaddleOCR not available. Install: pip install paddleocr")
         
-        # Initialize PaddleOCR if not already done
-        if not hasattr(self, 'paddleocr_reader') or self.paddleocr_reader is None:
-            print("[OCR] Initializing PaddleOCR reader...")
-            # Use English model with GPU disabled for compatibility
-            self.paddleocr_reader = PaddleOCR(
-                use_angle_cls=True,
-                lang='en',
-                use_gpu=False,
-                show_log=False
-            )
-            print("[OCR] PaddleOCR reader initialized")
+        # Create a fresh PaddleOCR instance for this OCR operation only
+        print("[OCR] Creating fresh PaddleOCR reader instance for this operation...")
+        try:
+            # Use minimal PaddleOCR configuration to avoid complex state issues
+            paddleocr_reader = PaddleOCR()
+            print("[OCR] Fresh PaddleOCR reader created successfully")
+        except Exception as e:
+            print(f"[OCR] Fresh PaddleOCR creation failed: {e}")
+            # If we can't create a fresh instance, the system may have deeper issues
+            raise e
         
-        # Convert PIL image to numpy array
+        # Convert PIL image to numpy array and ensure it's in the correct format
+        # PaddleOCR works better with higher resolution and good contrast
+        
+        # Scale up small images for better OCR results
+        original_size = pil_image.size
+        if min(original_size) < 32:
+            # Scale up very small images
+            scale_factor = max(2, 64 // min(original_size))
+            new_size = (original_size[0] * scale_factor, original_size[1] * scale_factor)
+            pil_image = pil_image.resize(new_size, Image.LANCZOS)
+            print(f"[OCR] Scaled up image from {original_size} to {new_size}")
+        
+        if pil_image.mode != 'RGB':
+            print(f"[OCR] Converting image from {pil_image.mode} to RGB")
+            pil_image = pil_image.convert('RGB')
+        
         np_image = np.array(pil_image)
+        print(f"[OCR] Image shape: {np_image.shape}, dtype: {np_image.dtype}")
+        
+        # Ensure image has 3 dimensions (height, width, channels)
+        if len(np_image.shape) == 2:
+            # Grayscale image, convert to RGB by stacking
+            print("[OCR] Converting grayscale to RGB format")
+            np_image = np.stack([np_image] * 3, axis=-1)
+        elif len(np_image.shape) == 3 and np_image.shape[2] == 1:
+            # Single channel with explicit dimension
+            print("[OCR] Converting single channel to RGB format")
+            np_image = np.concatenate([np_image] * 3, axis=2)
+        elif len(np_image.shape) == 3 and np_image.shape[2] == 4:
+            # RGBA image, remove alpha channel
+            print("[OCR] Converting RGBA to RGB format")
+            np_image = np_image[:, :, :3]
+        
+        print(f"[OCR] Final image shape for PaddleOCR: {np_image.shape}")
         
         # Run PaddleOCR
         try:
-            results = self.paddleocr_reader.ocr(np_image, cls=True)
+            # Use standard ocr method which is more stable than predict
+            results = paddleocr_reader.ocr(np_image)
+            print(f"[OCR] PaddleOCR ocr results type: {type(results)}")
+            extracted_text = self._parse_standard_paddleocr_results(results)
             
-            # Extract text from results
-            extracted_text = ""
-            if results and len(results) > 0 and results[0]:
-                # PaddleOCR returns nested list structure
-                for line in results[0]:
-                    if len(line) > 1 and len(line[1]) > 0:
-                        text = line[1][0]  # Get text part
-                        extracted_text += text + " "
-            
-            extracted_text = extracted_text.strip()
             print(f"[OCR] PaddleOCR completed, extracted text: '{extracted_text}'")
         except Exception as e:
-            print(f"[OCR] PaddleOCR error: {e}")
-            raise
+            print(f"[OCR] PaddleOCR error during processing: {e}")
+            import traceback
+            traceback.print_exc()
+            # Return empty string instead of raising to allow graceful fallback
+            return ""
         
         # Post-process text
         print("[OCR] Post-processing text...")
@@ -631,7 +660,108 @@ class OCRProcessor:
             print(f"[OCR] Post-processing error: {e}")
             final_text = extracted_text  # Fallback to raw text
         
+        # Clean up PaddleOCR instance to prevent state corruption
+        print("[OCR] Cleaning up PaddleOCR instance...")
+        try:
+            if 'paddleocr_reader' in locals() and paddleocr_reader is not None:
+                del paddleocr_reader
+                print("[OCR] PaddleOCR instance cleaned up successfully")
+        except Exception as cleanup_error:
+            print(f"[OCR] Cleanup error (non-critical): {cleanup_error}")
+        
         return final_text
+    
+    def _parse_standard_paddleocr_results(self, results) -> str:
+        """Parse standard PaddleOCR results format"""
+        extracted_text = ""
+        
+        if results is None:
+            print("[OCR] Standard PaddleOCR returned None")
+            return ""
+        
+        try:
+            # Debug: print structure (safely)
+            print(f"[OCR] Standard PaddleOCR results type: {type(results)}")
+            print(f"[OCR] Results length: {len(results) if isinstance(results, list) else 'not a list'}")
+            
+            # Based on the logs showing complex nested structure, try multiple parsing approaches
+            if isinstance(results, list) and len(results) > 0:
+                first_result = results[0]
+                print(f"[OCR] First result type: {type(first_result)}")
+                
+                # Approach 1: Standard PaddleOCR format: [[[bbox], (text, confidence)], ...]
+                if isinstance(first_result, list):
+                    print(f"[OCR] First result is list with {len(first_result)} items")
+                    for detection in first_result:
+                        try:
+                            if isinstance(detection, list) and len(detection) >= 2:
+                                # detection[0] is bbox, detection[1] is (text, confidence)
+                                text_data = detection[1]
+                                if isinstance(text_data, (list, tuple)) and len(text_data) >= 1:
+                                    text = str(text_data[0])
+                                    if text and text.strip():
+                                        extracted_text += text + " "
+                                        print(f"[OCR] Extracted text fragment: '{text}'")
+                        except (IndexError, TypeError) as e:
+                            print(f"[OCR] Error parsing detection: {e}")
+                            continue
+                
+                # Approach 2: Handle complex PaddleX-style nested structure  
+                elif isinstance(first_result, dict):
+                    print("[OCR] First result is dict, trying to extract text fields")
+                    extracted_text = self._extract_text_from_dict(first_result)
+                
+                # Approach 3: Handle single string result
+                elif isinstance(first_result, str):
+                    print("[OCR] First result is string")
+                    extracted_text = first_result
+            
+            extracted_text = extracted_text.strip()
+            print(f"[OCR] Final extracted text: '{extracted_text}'")
+            
+        except Exception as e:
+            print(f"[OCR] Error parsing standard PaddleOCR results: {e}")
+            import traceback
+            traceback.print_exc()
+            
+        return extracted_text
+    
+    def _extract_text_from_dict(self, result_dict, depth=0) -> str:
+        """Extract text from complex nested dictionary structure"""
+        if depth > 5:  # Prevent infinite recursion
+            return ""
+        
+        extracted = ""
+        
+        # Look for common text field names
+        text_fields = ['text', 'rec_text', 'ocr_text', 'recognized_text', 'result_text']
+        
+        for field in text_fields:
+            if field in result_dict:
+                value = result_dict[field]
+                if isinstance(value, str) and value.strip():
+                    extracted += value + " "
+                    print(f"[OCR] Found text in field '{field}': '{value}'")
+                elif isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, str) and item.strip():
+                            extracted += item + " "
+                        elif isinstance(item, dict):
+                            extracted += self._extract_text_from_dict(item, depth + 1)
+        
+        # If no direct text fields found, search recursively
+        if not extracted:
+            for key, value in result_dict.items():
+                if isinstance(value, dict):
+                    extracted += self._extract_text_from_dict(value, depth + 1)
+                elif isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            extracted += self._extract_text_from_dict(item, depth + 1)
+                        elif isinstance(item, str) and item.strip():
+                            extracted += item + " "
+        
+        return extracted
 
 
 class ConfirmationManager:
