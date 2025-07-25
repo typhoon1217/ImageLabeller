@@ -21,7 +21,7 @@ class EventHandlerMixin:
             self.keymap_manager = KeymapManager()
         except Exception as e:
             print(f"Error initializing keymap: {e}")
-            print("Please ensure keymap.json exists in the project root directory")
+            print("Please ensure keymap.json exists in the settings directory")
             raise
         
         # Setup global key bindings
@@ -865,7 +865,7 @@ Replace current text with extracted text?"""
             "\nOther:",
             "• Labels are auto-saved automatically",
             "\nConfiguration:",
-            "• Keyboard shortcuts are configurable in keymap.json"
+            "• Keyboard shortcuts are configurable in settings/keymap.json"
         ]
         
         help_text = "\n".join(help_sections + additional_info)

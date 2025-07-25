@@ -22,7 +22,7 @@ for root, dirs, files in os.walk(label_editor_path):
 
 # Additional data files
 datas = [
-    ('keymap.json', '.'),
+    ('settings', 'settings'),
     ('config', 'config'),
 ] + label_editor_datas
 

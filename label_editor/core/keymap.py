@@ -11,8 +11,8 @@ class KeymapManager:
     
     def __init__(self, keymap_file: str = None):
         if keymap_file is None:
-            # Default to keymap.json in the project root
-            keymap_file = Path(__file__).parent.parent.parent / 'keymap.json'
+            # Default to keymap.json in the settings directory
+            keymap_file = Path(__file__).parent.parent.parent / 'settings' / 'keymap.json'
         
         self.keymap_file = Path(keymap_file)
         
