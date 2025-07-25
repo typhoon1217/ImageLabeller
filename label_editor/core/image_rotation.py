@@ -114,35 +114,101 @@ class ImageRotator:
         rotated_boxes = []
         
         for box in boxes:
+            # Get box corners
+            corners = [
+                (box.x, box.y),
+                (box.x + box.width, box.y),
+                (box.x, box.y + box.height),
+                (box.x + box.width, box.y + box.height)
+            ]
+            
+            # Calculate center of original image
+            center_x = orig_width / 2
+            center_y = orig_height / 2
+            
             if angle == 90:
-                # 90° clockwise: (x,y) -> (y, orig_width-x-width)
-                # New image dimensions: orig_height x orig_width
-                new_x = box.y
-                new_y = orig_width - box.x - box.width
-                new_width = box.height
-                new_height = box.width
+                # 90° counter-clockwise rotation around center (user expects this direction)
+                rotated_corners = []
+                for x, y in corners:
+                    # Translate to origin
+                    tx = x - center_x
+                    ty = y - center_y
+                    # Rotate 90° counter-clockwise: (x,y) -> (-y, x)
+                    rx = -ty
+                    ry = tx
+                    # Translate back to new center (image is now orig_height x orig_width)
+                    new_center_x = orig_height / 2
+                    new_center_y = orig_width / 2
+                    final_x = rx + new_center_x
+                    final_y = ry + new_center_y
+                    rotated_corners.append((final_x, final_y))
+                
             elif angle == 180:
-                # 180°: (x,y) -> (orig_width-x-width, orig_height-y-height)
-                # New image dimensions: orig_width x orig_height (same)
-                new_x = orig_width - box.x - box.width
-                new_y = orig_height - box.y - box.height
-                new_width = box.width
-                new_height = box.height
+                # 180° rotation around center
+                rotated_corners = []
+                for x, y in corners:
+                    # Translate to origin
+                    tx = x - center_x
+                    ty = y - center_y
+                    # Rotate 180°: (x,y) -> (-x, -y)
+                    rx = -tx
+                    ry = -ty
+                    # Translate back (image stays same size)
+                    final_x = rx + center_x
+                    final_y = ry + center_y
+                    rotated_corners.append((final_x, final_y))
+                
             elif angle == 270:
-                # 270° clockwise (90° counter-clockwise): (x,y) -> (orig_height-y-height, x)
-                # New image dimensions: orig_height x orig_width
-                new_x = orig_height - box.y - box.height
-                new_y = box.x
-                new_width = box.height
-                new_height = box.width
+                # 270° counter-clockwise rotation around center (3x 90° counter-clockwise)
+                rotated_corners = []
+                for x, y in corners:
+                    # Translate to origin
+                    tx = x - center_x
+                    ty = y - center_y
+                    # Rotate 270° counter-clockwise: (x,y) -> (y, -x)
+                    rx = ty
+                    ry = -tx
+                    # Translate back to new center (image is now orig_height x orig_width)
+                    new_center_x = orig_height / 2
+                    new_center_y = orig_width / 2
+                    final_x = rx + new_center_x
+                    final_y = ry + new_center_y
+                    rotated_corners.append((final_x, final_y))
+                
             else:
                 # For arbitrary angles, use transformation matrix
                 new_x, new_y, new_width, new_height = ImageRotator._transform_box_arbitrary(
                     box, angle, orig_width, orig_height
                 )
+                
+            if angle in [90, 180, 270]:
+                # Find bounding box of rotated corners
+                min_x = min(c[0] for c in rotated_corners)
+                max_x = max(c[0] for c in rotated_corners)
+                min_y = min(c[1] for c in rotated_corners)
+                max_y = max(c[1] for c in rotated_corners)
+                
+                new_x = min_x
+                new_y = min_y
+                new_width = max_x - min_x
+                new_height = max_y - min_y
+            
+            # Clamp coordinates to image bounds after rotation
+            if angle in [90, 270]:
+                # For 90°/270° rotations, new image is orig_height x orig_width
+                max_x, max_y = orig_height, orig_width
+            else:
+                # For 180° rotation, image size stays the same
+                max_x, max_y = orig_width, orig_height
+            
+            # Clamp to bounds and ensure minimum size
+            clamped_x = max(0, min(int(new_x), max_x - 1))
+            clamped_y = max(0, min(int(new_y), max_y - 1))
+            clamped_width = max(1, min(int(new_width), max_x - clamped_x))
+            clamped_height = max(1, min(int(new_height), max_y - clamped_y))
             
             rotated_box = BoundingBox(
-                int(new_x), int(new_y), int(new_width), int(new_height),
+                clamped_x, clamped_y, clamped_width, clamped_height,
                 box.class_id, box.ocr_text
             )
             rotated_boxes.append(rotated_box)

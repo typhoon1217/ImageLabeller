@@ -120,6 +120,16 @@ This feature enhances the Label Editor's usability for handling real-world docum
 
 ## Fixed Issues (v1.3)
 
+### ✅ **Proper Corner-Based Rotation Transformation (v1.6)**
+- **Issue**: Labels still appeared in wrong positions after 90° and 270° rotations
+- **Root Cause**: Simplified rotation formulas were mathematically incorrect for bounding box transformation
+- **Solution**: Implemented proper corner-based rotation transformation:
+  - **90° rotation**: Transform all four corners using `(x,y) -> (y, orig_width-x)`, then find bounding box
+  - **180° rotation**: Transform all four corners using `(x,y) -> (orig_width-x, orig_height-y)`, then find bounding box  
+  - **270° rotation**: Transform all four corners using `(x,y) -> (orig_height-y, x)`, then find bounding box
+  - **Mathematically accurate**: Each corner is individually transformed, then new bounding box is calculated
+  - **Boundary clamping**: Safe bounds checking prevents out-of-bounds coordinates
+
 ### ✅ **No-Backup Overwrite (v1.4)**
 - **Change**: Removed automatic backup creation when overwriting original images
 - **Reason**: User requested simpler workflow without automatic backups
