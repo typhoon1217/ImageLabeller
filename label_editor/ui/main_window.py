@@ -35,6 +35,7 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         self._editing_in_progress = False
         self._text_editing_active = False
         self._filtered_file_list = None  # For filtered results
+        self._last_selected_class_id = None  # Remember last selected class for auto-selection
         
         # Setup window
         self._setup_window()
@@ -821,6 +822,29 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
             # Update OCR counts table
             self.update_ocr_counts_table()
     
+    def _find_best_available_class(self, target_class_id=None):
+        """Find the best available class for OCR text display
+        
+        Args:
+            target_class_id: Preferred class ID (from previous selection), or None
+            
+        Returns:
+            BoundingBox: Best available box, or None if no boxes exist
+        """
+        if not hasattr(self, 'canvas') or not self.canvas.boxes:
+            return None
+        
+        # If target class exists, prefer it
+        if target_class_id is not None:
+            for box in self.canvas.boxes:
+                if box.class_id == target_class_id:
+                    return box
+        
+        # Otherwise, find the class with lowest ID (highest priority)
+        # Sort boxes by class_id to get consistent priority ordering
+        sorted_boxes = sorted(self.canvas.boxes, key=lambda b: b.class_id)
+        return sorted_boxes[0] if sorted_boxes else None
+
     def update_ocr_counts_table(self):
         """Update OCR character counts table"""
         if not hasattr(self, 'ocr_count_label'):
@@ -886,13 +910,29 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
             self.label_manager.set_boxes([])
             self.canvas.set_boxes([])
         
-        # Ensure no box is selected when loading new image
-        self.canvas.selected_box = None
-        if hasattr(self, 'selected_info'):
-            self.selected_info.set_markup("<i>No box selected</i>")
-        
-        # Disable editing controls since no box is selected
-        self.set_editing_enabled(False)
+        # Auto-select best available class for OCR text display
+        best_box = self._find_best_available_class(self._last_selected_class_id)
+        if best_box:
+            # Select the best available box
+            if self.canvas.selected_box:
+                self.canvas.selected_box.selected = False
+            best_box.selected = True
+            self.canvas.selected_box = best_box
+            
+            # Update UI to show the selected box
+            if hasattr(self, 'on_box_selected') and callable(self.on_box_selected):
+                self.on_box_selected(best_box)
+            
+            # Enable editing controls
+            self.set_editing_enabled(True)
+        else:
+            # No boxes available, clear selection
+            self.canvas.selected_box = None
+            if hasattr(self, 'selected_info'):
+                self.selected_info.set_markup("<i>No box selected</i>")
+            
+            # Disable editing controls since no box is selected
+            self.set_editing_enabled(False)
         
         # Update UI
         self.image_info_label.set_text(f"{image_info['index'] + 1}/{image_info['total']}: {image_info['filename']}")

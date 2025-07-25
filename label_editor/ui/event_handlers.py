@@ -79,6 +79,8 @@ class EventHandlerMixin:
     def on_box_selected(self, box):
         """Handle box selection"""
         if box:
+            # Remember this class for future auto-selection
+            self._last_selected_class_id = box.class_id
             class_info = None
             if hasattr(self, 'project_manager'):
                 for cls in self.project_manager.class_config["classes"]:
