@@ -1,0 +1,48 @@
+{
+  "window": {
+    "width": 1600,
+    "height": 1000
+  },
+  "classes": {
+    "classes": [
+      {
+        "id": 0,
+        "name": "title",
+        "field_type": "text",
+        "color": [1.0, 0.0, 0.0],
+        "key": "1"
+      },
+      {
+        "id": 1,
+        "name": "paragraph",
+        "field_type": "text",
+        "color": [0.0, 1.0, 0.0],
+        "key": "2"
+      },
+      {
+        "id": 2,
+        "name": "table",
+        "field_type": "table",
+        "color": [0.0, 0.0, 1.0],
+        "key": "3"
+      },
+      {
+        "id": 3,
+        "name": "figure",
+        "field_type": "image",
+        "color": [1.0, 1.0, 0.0],
+        "key": "4"
+      }
+    ]
+  },
+  "ocr": {
+    "default_engine": "tesseract",
+    "language": "eng",
+    "dpi": 300
+  },
+  "ui": {
+    "show_confidence_scores": true,
+    "highlight_low_confidence": true,
+    "confidence_threshold": 0.8
+  }
+}

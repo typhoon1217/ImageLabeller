@@ -6,14 +6,26 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
 from ..core.validation import ValidationEngine
+from ..core.settings_manager import SettingsManager
 
 
 class ProjectManager:
     """Manages project state including directory loading and file tracking"""
     
     def __init__(self, config_file_path: str):
-        self.config_file = Path(config_file_path)
-        self.config = self.load_config()
+        # Initialize settings manager
+        self.settings_manager = SettingsManager()
+        
+        # Try to migrate from old settings if exists
+        old_settings_path = Path(config_file_path)
+        if old_settings_path.exists() and old_settings_path.name == 'settings.json':
+            self.settings_manager.migrate_from_single_file(old_settings_path)
+        
+        # Load default profile or last used profile
+        self._load_last_profile()
+        
+        self.config_file = Path(config_file_path)  # Keep for compatibility
+        self.config = self._get_config_from_settings()
         self.class_config = self._parse_class_config()
         
         # Project state
@@ -29,7 +41,8 @@ class ProjectManager:
         self.pending_operations = {}
         
         # Threading
-        self.executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix="gui_ops")
+        max_workers = self.settings_manager.get('performance.max_workers', 10)
+        self.executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="gui_ops")
         
         # Validation
         self.validation_engine = ValidationEngine(self.class_config)
@@ -41,42 +54,72 @@ class ProjectManager:
         self.on_error = None
         
         # Initialize current directory if specified
-        default_dir = self.config.get('default_directory')
+        default_dir = self.settings_manager.get('default_directory')
         if default_dir and Path(default_dir).exists():
             self.current_directory = Path(default_dir)
     
+    def _load_last_profile(self):
+        """Load the last used profile or default"""
+        # Try to load from a state file
+        state_file = self.settings_manager.base_dir / "last_profile.txt"
+        if state_file.exists():
+            try:
+                profile_name = state_file.read_text().strip()
+                if self.settings_manager.load_profile(profile_name):
+                    return
+            except:
+                pass
+        
+        # Try to load default profile
+        if self.settings_manager.load_profile("default"):
+            return
+        
+        # Use base settings
+        self.settings_manager.reset_to_base()
+    
+    def _get_config_from_settings(self) -> Dict[str, Any]:
+        """Get config dict from settings manager for compatibility"""
+        return {
+            'window_width': self.settings_manager.get('window.width', 
+                                                     self.settings_manager.get('ui.default_window_width', 1200)),
+            'window_height': self.settings_manager.get('window.height',
+                                                      self.settings_manager.get('ui.default_window_height', 800)),
+            'default_directory': self.settings_manager.get('default_directory', ''),
+            'classes': self.settings_manager.get('classes', {})
+        }
+    
     def load_config(self) -> Dict[str, Any]:
-        """Load configuration from settings.json"""
-        try:
-            if self.config_file.exists():
-                with open(self.config_file, 'r') as f:
-                    return json.load(f)
-        except Exception as e:
-            if self.on_error:
-                self.on_error(f"Config load error: {e}")
-        return {}
+        """Load configuration from settings manager"""
+        return self._get_config_from_settings()
     
     def save_config(self, additional_config: Dict[str, Any] = None):
-        """Save configuration to settings.json"""
+        """Save configuration to current profile"""
         try:
-            existing_config = {}
-            if self.config_file.exists():
-                try:
-                    with open(self.config_file, 'r') as f:
-                        existing_config = json.load(f)
-                except (json.JSONDecodeError, OSError):
-                    pass
-            
-            # Update with current state
+            # Update current directory
             if self.current_directory:
-                existing_config['default_directory'] = str(self.current_directory)
+                self.settings_manager.set('default_directory', str(self.current_directory))
             
             # Add any additional config
             if additional_config:
-                existing_config.update(additional_config)
+                # Map old config keys to new structure
+                if 'window_width' in additional_config:
+                    self.settings_manager.set('window.width', additional_config['window_width'])
+                if 'window_height' in additional_config:
+                    self.settings_manager.set('window.height', additional_config['window_height'])
+                
+                # Update other settings
+                for key, value in additional_config.items():
+                    if key not in ['window_width', 'window_height']:
+                        self.settings_manager.set(key, value)
             
-            with open(self.config_file, 'w') as f:
-                json.dump(existing_config, f, indent=2)
+            # Save to active profile
+            if self.settings_manager.active_profile:
+                self.settings_manager.save_profile(self.settings_manager.active_profile)
+            
+            # Save last profile name
+            state_file = self.settings_manager.base_dir / "last_profile.txt"
+            if self.settings_manager.active_profile:
+                state_file.write_text(self.settings_manager.active_profile)
                 
         except (OSError, ValueError) as e:
             if self.on_error:

@@ -1,0 +1,61 @@
+{
+  "window": {
+    "width": 1500,
+    "height": 900
+  },
+  "classes": {
+    "classes": [
+      {
+        "id": 0,
+        "name": "invoice_number",
+        "field_type": "text",
+        "color": [1.0, 0.0, 0.0],
+        "key": "1",
+        "regex_pattern": "^INV-\\d{6,}$"
+      },
+      {
+        "id": 1,
+        "name": "date",
+        "field_type": "date",
+        "color": [0.0, 1.0, 0.0],
+        "key": "2",
+        "regex_pattern": "^\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}$"
+      },
+      {
+        "id": 2,
+        "name": "total_amount",
+        "field_type": "currency",
+        "color": [0.0, 0.0, 1.0],
+        "key": "3",
+        "regex_pattern": "^\\$?\\d{1,3}(,\\d{3})*(\\.\\d{2})?$"
+      },
+      {
+        "id": 3,
+        "name": "vendor_name",
+        "field_type": "text",
+        "color": [1.0, 1.0, 0.0],
+        "key": "4"
+      },
+      {
+        "id": 4,
+        "name": "line_item",
+        "field_type": "table_row",
+        "color": [1.0, 0.0, 1.0],
+        "key": "5"
+      }
+    ]
+  },
+  "ocr": {
+    "default_engine": "tesseract",
+    "preprocessing": {
+      "deskew": true,
+      "remove_noise": true,
+      "enhance_contrast": true
+    }
+  },
+  "validation": {
+    "strict_mode": true,
+    "regex_validation": true,
+    "required_fields": ["invoice_number", "date", "total_amount"]
+  }
+}

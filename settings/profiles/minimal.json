@@ -1,0 +1,26 @@
+{
+  "ui": {
+    "show_toolbar": false,
+    "show_statusbar": false,
+    "show_file_list": false,
+    "show_label_list": false
+  },
+  "performance": {
+    "auto_save_enabled": false
+  },
+  "validation": {
+    "enable_realtime": false,
+    "show_warnings": false
+  },
+  "classes": {
+    "classes": [
+      {
+        "id": 0,
+        "name": "text",
+        "field_type": "text",
+        "color": [0.0, 1.0, 0.0],
+        "key": "1"
+      }
+    ]
+  }
+}

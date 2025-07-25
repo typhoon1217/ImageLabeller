@@ -1,0 +1,40 @@
+{
+  "app": {
+    "name": "Label Editor",
+    "version": "1.0.0",
+    "auto_save_interval": 60,
+    "max_recent_files": 10
+  },
+  "ui": {
+    "theme": "default",
+    "show_toolbar": true,
+    "show_statusbar": true,
+    "default_window_width": 1200,
+    "default_window_height": 800,
+    "monospace_font": "monospace 10",
+    "show_file_list": true,
+    "show_label_list": true
+  },
+  "performance": {
+    "max_workers": 10,
+    "cache_size_mb": 100,
+    "enable_threading": true,
+    "auto_save_enabled": true
+  },
+  "file_types": {
+    "image_extensions": [".jpg", ".jpeg", ".png", ".bmp"],
+    "data_extension": ".dat"
+  },
+  "validation": {
+    "enable_realtime": true,
+    "show_warnings": true,
+    "strict_mode": false
+  },
+  "shortcuts": {
+    "next_image": "Right",
+    "previous_image": "Left",
+    "save": "Ctrl+S",
+    "open": "Ctrl+O",
+    "quit": "Ctrl+Q"
+  }
+}
