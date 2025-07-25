@@ -7,6 +7,7 @@ gi.require_version('Gdk', '4.0')
 gi.require_version('GdkPixbuf', '2.0')
 from gi.repository import Gtk, Gdk, GdkPixbuf
 from ..core.data_types import BoundingBox
+from ..core.image_rotation import RotationManager
 
 
 class ImageCanvas(Gtk.DrawingArea):
@@ -72,6 +73,11 @@ class ImageCanvas(Gtk.DrawingArea):
         self.on_box_selected = None
         self.on_boxes_changed = None
         self.is_text_editing_active = None  # Callback to check if text editing is active
+        
+        # Image rotation
+        self.rotation_manager = RotationManager()
+        self.rotation_manager.on_rotation_changed = self.on_rotation_changed
+        self.on_image_rotated = None  # Callback for when image is rotated
 
     def get_class_by_id(self, class_id):
         for cls in self.class_config["classes"]:
@@ -89,9 +95,20 @@ class ImageCanvas(Gtk.DrawingArea):
 
     def load_image(self, file_path: str):
         try:
-            self.pixbuf = GdkPixbuf.Pixbuf.new_from_file(file_path)
-            self.fit_image()
-            self.queue_draw()
+            # Clear rotation cache for new image
+            if hasattr(self, '_original_boxes'):
+                delattr(self, '_original_boxes')
+            
+            # Load image through rotation manager
+            if self.rotation_manager.load_image(file_path):
+                self.pixbuf = self.rotation_manager.get_current_pixbuf()
+                self.fit_image()
+                self.queue_draw()
+            else:
+                # Fallback to direct loading
+                self.pixbuf = GdkPixbuf.Pixbuf.new_from_file(file_path)
+                self.fit_image()
+                self.queue_draw()
         except Exception as e:
             print(f"Load error: {e}")
 
@@ -145,7 +162,12 @@ class ImageCanvas(Gtk.DrawingArea):
         return int(img_x), int(img_y)
 
     def set_boxes(self, boxes: List[BoundingBox]):
-        self.boxes = boxes
+        # Safety check: ensure boxes is always a list
+        if isinstance(boxes, list):
+            self.boxes = boxes
+        else:
+            self.boxes = []
+            
         for box in self.boxes:
             box.name = self.get_class_name(box.class_id)
         self.selected_box = None
@@ -174,6 +196,10 @@ class ImageCanvas(Gtk.DrawingArea):
             return
 
         try:
+            # Safety check: ensure self.boxes is a list
+            if not isinstance(self.boxes, list):
+                self.boxes = []
+                
             for box in self.boxes:
                 canvas_x, canvas_y = self.image_to_canvas(box.x, box.y)
                 canvas_width = box.width * self.scale_factor
@@ -481,6 +507,17 @@ class ImageCanvas(Gtk.DrawingArea):
                         self.queue_draw()
                         return True
 
+        # Image rotation shortcuts
+        if keyval == Gdk.KEY_r and state & Gdk.ModifierType.CONTROL_MASK:
+            if state & Gdk.ModifierType.SHIFT_MASK:
+                self.rotate_image_counterclockwise()
+            else:
+                self.rotate_image_clockwise()
+            return True
+        elif keyval == Gdk.KEY_F5:
+            self.reset_image_rotation()
+            return True
+        
         return False
 
     def on_scroll(self, controller, dx, dy):
@@ -489,3 +526,88 @@ class ImageCanvas(Gtk.DrawingArea):
         elif dy > 0:  # Scroll down - zoom out
             self.zoom_out()
         return True
+
+    def rotate_image_clockwise(self):
+        """Rotate image 90 degrees clockwise"""
+        if self.rotation_manager.rotate(90):
+            self.pixbuf = self.rotation_manager.get_current_pixbuf()
+            # Apply total rotation from original boxes
+            self._update_boxes_for_rotation()
+            self.fit_image()
+            self.queue_draw()
+            if self.on_boxes_changed:
+                self.on_boxes_changed()
+
+    def rotate_image_counterclockwise(self):
+        """Rotate image 90 degrees counterclockwise"""
+        if self.rotation_manager.rotate(-90):
+            self.pixbuf = self.rotation_manager.get_current_pixbuf()
+            # Apply total rotation from original boxes
+            self._update_boxes_for_rotation()
+            self.fit_image()
+            self.queue_draw()
+            if self.on_boxes_changed:
+                self.on_boxes_changed()
+
+    def rotate_image_180(self):
+        """Rotate image 180 degrees"""
+        if self.rotation_manager.rotate(180):
+            self.pixbuf = self.rotation_manager.get_current_pixbuf()
+            # Apply total rotation from original boxes
+            self._update_boxes_for_rotation()
+            self.fit_image()
+            self.queue_draw()
+            if self.on_boxes_changed:
+                self.on_boxes_changed()
+    
+    def _update_boxes_for_rotation(self):
+        """Update bounding boxes based on current total rotation"""
+        # Safety check: ensure self.boxes is always a list
+        if not isinstance(self.boxes, list):
+            self.boxes = []
+        
+        if not hasattr(self, '_original_boxes'):
+            # Store original boxes on first rotation
+            self._original_boxes = [box for box in self.boxes]
+        
+        # Apply total rotation to original boxes
+        current_rotation = self.rotation_manager.get_current_rotation()
+        if current_rotation == 0:
+            self.boxes = [box for box in self._original_boxes]
+        else:
+            original_pixbuf = self.rotation_manager.original_pixbuf
+            if original_pixbuf:
+                rotated_boxes = self.rotation_manager.rotate_bounding_boxes(self._original_boxes)
+                if isinstance(rotated_boxes, list):
+                    self.boxes = rotated_boxes
+                else:
+                    self.boxes = []
+
+    def reset_image_rotation(self):
+        """Reset image to original orientation"""
+        self.rotation_manager.reset_rotation()
+        self.pixbuf = self.rotation_manager.get_current_pixbuf()
+        # Restore original boxes
+        if hasattr(self, '_original_boxes'):
+            self.boxes = [box for box in self._original_boxes]
+        self.fit_image()
+        self.queue_draw()
+        if self.on_image_rotated:
+            self.on_image_rotated('reset')
+
+    def get_current_rotation(self) -> int:
+        """Get current rotation angle"""
+        return self.rotation_manager.get_current_rotation()
+
+    def has_unsaved_rotation(self) -> bool:
+        """Check if image has unsaved rotation"""
+        return self.rotation_manager.has_unsaved_rotation
+
+    def save_rotated_image(self, overwrite: bool = False) -> str:
+        """Save the rotated image"""
+        return self.rotation_manager.save_rotated_image(overwrite)
+
+    def on_rotation_changed(self, rotation_angle: int, has_unsaved: bool):
+        """Callback for when rotation changes"""
+        if self.on_image_rotated:
+            self.on_image_rotated(rotation_angle, has_unsaved)

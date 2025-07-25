@@ -295,7 +295,82 @@ class EventHandlerMixin:
     def on_save(self, action, param):
         """Handle save action"""
         if hasattr(self, 'project_manager') and self.project_manager.current_dat_path:
-            self.save_dat_file(str(self.project_manager.current_dat_path))
+            # Check if image has been rotated
+            if hasattr(self, 'canvas') and self.canvas.has_unsaved_rotation():
+                self._save_with_rotation()
+            else:
+                self.save_dat_file(str(self.project_manager.current_dat_path))
+    
+    def _save_with_rotation(self):
+        """Save both rotated image and adjusted labels"""
+        # Show save options for rotated content
+        dialog = Gtk.MessageDialog(
+            transient_for=self,
+            modal=True,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.NONE,
+            text="Save Rotated Content"
+        )
+        dialog.set_property("secondary-text",
+            "This image has been rotated. How would you like to save?\n\n"
+            "• Save Both: Overwrite original image file with rotated version and save current label positions\n"
+            "• Labels Only: Keep original image, save rotated label coordinates"
+        )
+        
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dialog.add_button("Labels Only", Gtk.ResponseType.NO)
+        dialog.add_button("Save Both", Gtk.ResponseType.YES)
+        dialog.set_default_response(Gtk.ResponseType.YES)
+        
+        # GTK4 compatible dialog handling
+        def on_dialog_response(dialog, response_id):
+            dialog.destroy()
+            if response_id == Gtk.ResponseType.YES:
+                # Save rotated image and current label positions
+                self._save_rotated_image_and_current_labels()
+            elif response_id == Gtk.ResponseType.NO:
+                # Save only labels with rotated coordinates 
+                self.save_dat_file(str(self.project_manager.current_dat_path))
+        
+        dialog.connect('response', on_dialog_response)
+        dialog.present()
+    
+    def _save_rotated_image_and_current_labels(self):
+        """Save rotated image file and current label positions as they appear"""
+        try:
+            # Save rotated image (overwrite original with backup)
+            saved_image_path = self.canvas.save_rotated_image(overwrite=True)
+            if saved_image_path:
+                # Get current boxes as they appear on screen
+                current_boxes = self.canvas.boxes
+                
+                # Save current box positions - these are perfect for the rotated image
+                if current_boxes is not None:
+                    self.label_manager.boxes = current_boxes
+                    self.save_dat_file(str(self.project_manager.current_dat_path))
+                    
+                    # Reset rotation state since image is now saved rotated
+                    self.canvas.rotation_manager.current_rotation = 0
+                    self.canvas.rotation_manager.has_unsaved_rotation = False
+                    
+                    # Clear rotation cache
+                    if hasattr(self.canvas, '_original_boxes'):
+                        delattr(self.canvas, '_original_boxes')
+                    
+                    # Reload the now-rotated image to reset everything
+                    self.canvas.load_image(self.project_manager.current_image_path)
+                    self.canvas.boxes = current_boxes
+                    
+                    self.update_status("Original image overwritten with rotated version and labels saved")
+                    self.unsaved_changes = False
+                    self.update_title()
+                else:
+                    self.show_error("Failed to retrieve original label coordinates")
+            else:
+                self.show_error("Failed to save rotated image")
+        except Exception as e:
+            self.show_error(f"Error saving rotated content: {e}")
+    
     
     # Text editing handlers
     def on_ocr_text_changed(self, buffer):

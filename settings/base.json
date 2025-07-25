@@ -35,6 +35,16 @@
     "previous_image": "Left",
     "save": "Ctrl+S",
     "open": "Ctrl+O",
-    "quit": "Ctrl+Q"
+    "quit": "Ctrl+Q",
+    "rotate_clockwise": "Ctrl+R",
+    "rotate_counterclockwise": "Ctrl+Shift+R",
+    "reset_rotation": "F5"
+  },
+  "rotation": {
+    "auto_save_backup": true,
+    "default_save_format": "copy",
+    "backup_suffix": "_backup",
+    "rotated_suffix": "_rotated",
+    "confirm_overwrite": true
   }
 }

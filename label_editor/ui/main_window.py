@@ -231,6 +231,7 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         self.canvas.on_box_selected = self.on_box_selected
         self.canvas.on_boxes_changed = self.on_boxes_changed
         self.canvas.is_text_editing_active = lambda: self._text_editing_active
+        self.canvas.on_image_rotated = self._on_image_rotated
         
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_child(self.canvas)
@@ -272,6 +273,9 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         separator = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
         nav_toolbar.append(separator)
         
+        # Image rotation controls
+        self._add_rotation_controls(nav_toolbar)
+        
         # Zoom controls
         zoom_out_btn = Gtk.Button(label="−")
         zoom_out_btn.set_tooltip_text("Zoom Out (- key or scroll down)")
@@ -294,6 +298,45 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         nav_toolbar.append(reset_zoom_btn)
         
         return nav_toolbar
+    
+    def _add_rotation_controls(self, nav_toolbar):
+        """Add image rotation controls to navigation toolbar"""
+        # Rotate counter-clockwise button
+        rotate_left_btn = Gtk.Button(label="↺")
+        rotate_left_btn.set_tooltip_text("Rotate 90° Counter-clockwise (Ctrl+Shift+R)")
+        rotate_left_btn.connect('clicked', self._on_rotate_left_clicked)
+        nav_toolbar.append(rotate_left_btn)
+        
+        # Rotate clockwise button  
+        rotate_right_btn = Gtk.Button(label="↻")
+        rotate_right_btn.set_tooltip_text("Rotate 90° Clockwise (Ctrl+R)")
+        rotate_right_btn.connect('clicked', self._on_rotate_right_clicked)
+        nav_toolbar.append(rotate_right_btn)
+        
+        # Reset rotation button
+        reset_rotation_btn = Gtk.Button(label="⟲")
+        reset_rotation_btn.set_tooltip_text("Reset Rotation (F5)")
+        reset_rotation_btn.connect('clicked', self._on_reset_rotation_clicked)
+        nav_toolbar.append(reset_rotation_btn)
+        
+        # Save rotated image button
+        save_rotation_btn = Gtk.Button(label="💾")
+        save_rotation_btn.set_tooltip_text("Save Rotated Image")
+        save_rotation_btn.connect('clicked', self._on_save_rotation_clicked)
+        save_rotation_btn.set_sensitive(False)
+        nav_toolbar.append(save_rotation_btn)
+        
+        # Store button references
+        self.rotate_left_btn = rotate_left_btn
+        self.rotate_right_btn = rotate_right_btn
+        self.reset_rotation_btn = reset_rotation_btn
+        self.save_rotation_btn = save_rotation_btn
+        
+        # Rotation status label
+        self.rotation_status_label = Gtk.Label()
+        self.rotation_status_label.set_text("0°")
+        self.rotation_status_label.set_margin_start(5)
+        nav_toolbar.append(self.rotation_status_label)
     
     def _create_editor_sidebar(self) -> Gtk.Box:
         """Create label editor sidebar"""
@@ -902,6 +945,13 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         if (self.project_manager.current_image_path and 
             self.unsaved_changes and 
             hasattr(self, 'canvas')):
+            
+            # Check if image has been rotated
+            if self.canvas.has_unsaved_rotation():
+                # For auto-save, only save labels with rotated coordinates
+                # Don't auto-save the rotated image to avoid unintended changes
+                self.update_status("Auto-save: Labels saved with rotated coordinates (image rotation not auto-saved)")
+            
             self.label_manager.boxes = self.canvas.boxes
             dat_path = Path(self.project_manager.current_image_path).with_suffix('.dat')
             self.label_manager.save_to_file(str(dat_path))
@@ -989,3 +1039,134 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         # This method updates the internal mapping for the file list binding
         # The binding methods will now use the filtered data when available
         pass
+    
+    # Image rotation event handlers
+    def _on_rotate_left_clicked(self, button):
+        """Handle rotate counter-clockwise button click"""
+        if hasattr(self, 'canvas'):
+            self.canvas.rotate_image_counterclockwise()
+    
+    def _on_rotate_right_clicked(self, button):
+        """Handle rotate clockwise button click"""
+        if hasattr(self, 'canvas'):
+            self.canvas.rotate_image_clockwise()
+    
+    def _on_reset_rotation_clicked(self, button):
+        """Handle reset rotation button click"""
+        if hasattr(self, 'canvas'):
+            # Reload original boxes from file
+            self._reload_original_boxes()
+            self.canvas.reset_image_rotation()
+    
+    def _on_save_rotation_clicked(self, button):
+        """Handle save rotation button click"""
+        if not hasattr(self, 'canvas') or not self.canvas.has_unsaved_rotation():
+            return
+        
+        # Show save options dialog
+        dialog = Gtk.MessageDialog(
+            transient_for=self,
+            modal=True,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.NONE,
+            text="Save Rotated Image"
+        )
+        dialog.set_property("secondary-text", 
+            "How would you like to save the rotated image?\n\n"
+            "• Overwrite: Replace the original image file\n"
+            "• Save Copy: Save as a new file with '_rotated' suffix"
+        )
+        
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dialog.add_button("Save Copy", Gtk.ResponseType.NO)  
+        dialog.add_button("Overwrite", Gtk.ResponseType.YES)
+        dialog.set_default_response(Gtk.ResponseType.NO)
+        
+        # GTK4 compatible dialog handling
+        def on_dialog_response(dialog, response_id):
+            dialog.destroy()
+            if response_id == Gtk.ResponseType.YES:
+                # Overwrite original - save both image and current labels
+                self._save_rotated_image_and_current_labels()
+            elif response_id == Gtk.ResponseType.NO:
+                # Save copy - just save image copy
+                saved_path = self.canvas.save_rotated_image(overwrite=False)
+                if saved_path:
+                    self.update_status(f"Rotated image saved as: {Path(saved_path).name}")
+                else:
+                    self.show_error("Failed to save rotated image copy")
+        
+        dialog.connect('response', on_dialog_response)
+        dialog.present()
+    
+    def _save_rotated_image_and_current_labels(self):
+        """Save rotated image file and current label positions as they appear"""
+        try:
+            # Save rotated image (overwrite original with backup)
+            saved_image_path = self.canvas.save_rotated_image(overwrite=True)
+            if saved_image_path:
+                # Get current boxes as they appear on screen
+                current_boxes = self.canvas.boxes
+                
+                # Save current box positions - these are perfect for the rotated image
+                if current_boxes is not None:
+                    self.label_manager.boxes = current_boxes
+                    self.save_dat_file(str(self.project_manager.current_dat_path))
+                    
+                    # Reset rotation state since image is now saved rotated
+                    self.canvas.rotation_manager.current_rotation = 0
+                    self.canvas.rotation_manager.has_unsaved_rotation = False
+                    
+                    # Clear rotation cache
+                    if hasattr(self.canvas, '_original_boxes'):
+                        delattr(self.canvas, '_original_boxes')
+                    
+                    # Reload the now-rotated image to reset everything
+                    self.canvas.load_image(self.project_manager.current_image_path)
+                    self.canvas.boxes = current_boxes
+                    
+                    self.update_status("Original image overwritten with rotated version and labels saved")
+                    self.unsaved_changes = False
+                    self.update_title()
+                    self._update_rotation_controls(0, False)
+                else:
+                    self.show_error("Failed to retrieve current label coordinates")
+            else:
+                self.show_error("Failed to save rotated image")
+        except Exception as e:
+            self.show_error(f"Error saving rotated content: {e}")
+    
+    def _reload_original_boxes(self):
+        """Reload original bounding boxes from file"""
+        if not self.project_manager.current_dat_path:
+            return
+        
+        try:
+            if self.project_manager.current_dat_path.exists():
+                original_boxes = self.label_manager.load_from_file(
+                    str(self.project_manager.current_dat_path)
+                )
+                self.canvas.boxes = original_boxes
+            else:
+                self.canvas.boxes = []
+        except Exception as e:
+            self.show_error(f"Error reloading original boxes: {e}")
+    
+    def _update_rotation_controls(self, rotation_angle: int, has_unsaved: bool):
+        """Update rotation controls based on current state"""
+        if hasattr(self, 'rotation_status_label'):
+            self.rotation_status_label.set_text(f"{rotation_angle}°")
+        
+        if hasattr(self, 'save_rotation_btn'):
+            self.save_rotation_btn.set_sensitive(has_unsaved)
+    
+    def _on_image_rotated(self, *args):
+        """Handle image rotation callback from canvas"""
+        if len(args) == 2:
+            # Called with rotation_angle and has_unsaved
+            rotation_angle, has_unsaved = args
+            self._update_rotation_controls(rotation_angle, has_unsaved)
+        elif len(args) == 1 and args[0] == 'reset':
+            # Reset callback - reload original image and boxes
+            self._reload_original_boxes()
+            self._update_rotation_controls(0, False)
