@@ -221,30 +221,54 @@ class ImageCanvas(Gtk.DrawingArea):
                     show_labels = not self.is_text_editing_active()
 
                 if show_labels:
-                    cr.set_source_rgb(1.0, 1.0, 1.0)
                     cr.select_font_face("Sans", 0, 0)
                     cr.set_font_size(11)
 
-                ocr_display = box.ocr_text[:30] + "..." if len(box.ocr_text) > 30 else box.ocr_text
-                label_text = f"{box.name}: {ocr_display}"
+                    ocr_display = box.ocr_text[:30] + "..." if len(box.ocr_text) > 30 else box.ocr_text
+                    label_prefix = f"{box.name}: "
+                    
+                    # Calculate total text extents for background
+                    full_text = label_prefix + ocr_display
+                    text_extents = cr.text_extents(full_text)
+                    text_width = text_extents.width + 4
+                    text_height = text_extents.height + 4
 
-                text_extents = cr.text_extents(label_text)
-                text_width = text_extents.width + 4
-                text_height = text_extents.height + 4
+                    label_x = canvas_x
+                    label_y = canvas_y - text_height - 2
 
-                label_x = canvas_x
-                label_y = canvas_y - text_height - 2
+                    if label_y < 0:
+                        label_y = canvas_y + canvas_height + text_height + 2
 
-                if label_y < 0:
-                    label_y = canvas_y + canvas_height + text_height + 2
+                    # Draw background
+                    cr.set_source_rgba(0.0, 0.0, 0.0, 0.3)
+                    cr.rectangle(label_x, label_y, text_width, text_height)
+                    cr.fill()
 
-                cr.set_source_rgba(0.0, 0.0, 0.0, 0.3)
-                cr.rectangle(label_x, label_y, text_width, text_height)
-                cr.fill()
-
-                cr.set_source_rgb(1.0, 1.0, 1.0)  # White text
-                cr.move_to(label_x + 2, label_y + text_height - 2)
-                cr.show_text(label_text)
+                    # Draw label prefix in white
+                    cr.set_source_rgb(1.0, 1.0, 1.0)  # White text
+                    cr.move_to(label_x + 2, label_y + text_height - 2)
+                    cr.show_text(label_prefix)
+                    
+                    # Get current position after prefix
+                    prefix_extents = cr.text_extents(label_prefix)
+                    ocr_start_x = label_x + 2 + prefix_extents.width
+                    
+                    # Draw OCR text with color coding
+                    current_x = ocr_start_x
+                    for char in ocr_display:
+                        if char.isdigit():
+                            cr.set_source_rgb(0.4, 0.8, 1.0)  # Cyan for numbers
+                        elif char.isalpha():
+                            cr.set_source_rgb(1.0, 1.0, 1.0)  # White for letters
+                        else:
+                            cr.set_source_rgb(1.0, 1.0, 0.6)  # Light yellow for special chars
+                        
+                        cr.move_to(current_x, label_y + text_height - 2)
+                        cr.show_text(char)
+                        
+                        # Advance position
+                        char_extents = cr.text_extents(char)
+                        current_x += char_extents.width
 
                 if box.selected:
                     handle_size = 6

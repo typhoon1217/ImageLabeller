@@ -839,7 +839,7 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         
         # Create table header
         table_text = "<b>OCR Character Counts</b>\n"
-        table_text += "<tt>Line | Letters | Numbers | Special | Total</tt>\n"
+        table_text += "<tt>Line | <span color='white'>Letters</span> | <span color='#66ccff'>Numbers</span> | <span color='#ffff99'>Special</span> | Total</tt>\n"
         table_text += "<tt>-----|---------|---------|---------|------</tt>\n"
         
         for box in sorted(self.canvas.boxes, key=lambda b: b.class_id):
@@ -854,13 +854,13 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
             total_numbers += number_count
             total_special += special_count
             
-            # Format table row with fixed width columns
-            table_text += f"<tt>{box.name:<4} | {letter_count:^7} | {number_count:^7} | {special_count:^7} | {total_chars:^5}</tt>\n"
+            # Format table row with color coding
+            table_text += f"<tt>{box.name:<4} | <span color='white'>{letter_count:^7}</span> | <span color='#66ccff'>{number_count:^7}</span> | <span color='#ffff99'>{special_count:^7}</span> | {total_chars:^5}</tt>\n"
         
         # Add totals row
         total_all = total_letters + total_numbers + total_special
         table_text += "<tt>-----|---------|---------|---------|------</tt>\n"
-        table_text += f"<tt>{'ALL':<4} | {total_letters:^7} | {total_numbers:^7} | {total_special:^7} | {total_all:^5}</tt>"
+        table_text += f"<tt>{'ALL':<4} | <span color='white'>{total_letters:^7}</span> | <span color='#66ccff'>{total_numbers:^7}</span> | <span color='#ffff99'>{total_special:^7}</span> | {total_all:^5}</tt>"
         
         # Update the character count display
         self.ocr_count_label.set_markup(table_text)
@@ -870,6 +870,10 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         image_info = self.project_manager.get_current_image_info()
         if not image_info:
             return
+        
+        # Clear OCR text box when loading new image to prevent persistence
+        if hasattr(self, 'ocr_text'):
+            self.ocr_text.get_buffer().set_text("", -1)
         
         # Load image in canvas
         self.canvas.load_image(image_info['path'])
@@ -881,6 +885,14 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         else:
             self.label_manager.set_boxes([])
             self.canvas.set_boxes([])
+        
+        # Ensure no box is selected when loading new image
+        self.canvas.selected_box = None
+        if hasattr(self, 'selected_info'):
+            self.selected_info.set_markup("<i>No box selected</i>")
+        
+        # Disable editing controls since no box is selected
+        self.set_editing_enabled(False)
         
         # Update UI
         self.image_info_label.set_text(f"{image_info['index'] + 1}/{image_info['total']}: {image_info['filename']}")
