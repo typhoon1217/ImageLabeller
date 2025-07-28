@@ -472,6 +472,8 @@ class OCRProcessor:
                 final_text = self._run_easyocr_ocr(pil_image, box)
             elif ocr_engine == "paddleocr":
                 final_text = self._run_paddleocr_ocr(pil_image, box)
+            elif ocr_engine == "vietocr":
+                final_text = self._run_vietocr_ocr(pil_image, box)
             else:
                 raise ValueError(f"Unknown OCR engine: {ocr_engine}")
             
@@ -762,6 +764,87 @@ class OCRProcessor:
                             extracted += item + " "
         
         return extracted
+    
+    def _run_vietocr_ocr(self, pil_image, box: BoundingBox) -> str:
+        """Run VietOCR on the image for Vietnamese text recognition"""
+        print("[OCR] Running VietOCR...")
+        
+        # Import VietOCR
+        try:
+            from vietocr.tool.predictor import Predictor
+            from vietocr.tool.config import Cfg
+            print("[OCR] VietOCR modules imported successfully")
+        except ImportError as e:
+            raise ImportError("VietOCR not available. Install: pip install vietocr")
+        
+        # Get VietOCR configuration
+        print("[OCR] Setting up VietOCR configuration...")
+        try:
+            # Load pretrained Vietnamese transformer model
+            config = Cfg.load_config_from_name('vgg_transformer')
+            
+            # Configure for CPU usage (can be changed to 'cuda:0' if GPU available)
+            config['device'] = 'cpu'
+            
+            # Ensure reproducible results
+            config['predictor']['beamsearch'] = False
+            
+            print(f"[OCR] VietOCR config loaded: device={config['device']}")
+        except Exception as e:
+            print(f"[OCR] VietOCR config error: {e}")
+            raise e
+        
+        # Initialize VietOCR predictor
+        print("[OCR] Initializing VietOCR predictor...")
+        try:
+            detector = Predictor(config)
+            print("[OCR] VietOCR predictor initialized successfully")
+        except Exception as e:
+            print(f"[OCR] VietOCR predictor initialization failed: {e}")
+            raise e
+        
+        # Scale up small images for better OCR results (similar to PaddleOCR preprocessing)
+        original_size = pil_image.size
+        if min(original_size) < 32:
+            # Scale up very small images
+            from PIL import Image
+            scale_factor = max(2, 64 // min(original_size))
+            new_size = (original_size[0] * scale_factor, original_size[1] * scale_factor)
+            pil_image = pil_image.resize(new_size, Image.LANCZOS)
+            print(f"[OCR] Scaled up image from {original_size} to {new_size}")
+        
+        # Run OCR
+        print("[OCR] Running VietOCR prediction...")
+        try:
+            extracted_text = detector.predict(pil_image, return_prob=False)
+            if extracted_text is None:
+                extracted_text = ""
+            extracted_text = str(extracted_text).strip()
+            print(f"[OCR] VietOCR completed, extracted text: '{extracted_text}'")
+        except Exception as e:
+            print(f"[OCR] VietOCR prediction error: {e}")
+            raise
+        
+        # Post-process text
+        print("[OCR] Post-processing text...")
+        try:
+            final_text = ImageOperations.postprocess_text_by_field_type(
+                extracted_text, box.class_id, self.class_config)
+            print(f"[OCR] Post-processing completed, final text: '{final_text}'")
+        except Exception as e:
+            print(f"[OCR] Post-processing error: {e}")
+            final_text = extracted_text  # Fallback to raw text
+        
+        # Clean up VietOCR predictor to prevent memory issues
+        print("[OCR] Cleaning up VietOCR predictor...")
+        try:
+            if 'detector' in locals() and detector is not None:
+                del detector
+                print("[OCR] VietOCR predictor cleaned up successfully")
+        except Exception as cleanup_error:
+            print(f"[OCR] Cleanup error (non-critical): {cleanup_error}")
+        
+        return final_text
 
 
 class ConfirmationManager:

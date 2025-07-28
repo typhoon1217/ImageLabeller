@@ -575,6 +575,7 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         self.ocr_model_combo.append("tesseract", "Tesseract")
         self.ocr_model_combo.append("easyocr", "EasyOCR")
         self.ocr_model_combo.append("paddleocr", "PaddleOCR")
+        self.ocr_model_combo.append("vietocr", "VietOCR (Vietnamese)")
         self.ocr_model_combo.set_active_id("tesseract")  # Default to Tesseract
         self.ocr_model_combo.set_tooltip_text("Select OCR engine to use")
         ocr_model_box.append(self.ocr_model_combo)
