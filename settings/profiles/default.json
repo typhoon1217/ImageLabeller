@@ -1,35 +1,46 @@
 {
+  "validation": {
+    "regex_validation": true
+  },
   "window": {
-    "width": 448,
+    "width": 906,
     "height": 511
   },
-  "default_directory": "/home/jungwoo/Documents/metsakuur/a_passport/Passport-9",
+  "default_directory": "",
   "classes": {
     "classes": [
       {
         "id": 0,
-        "name": "mrz1",
-        "field_type": "mrz",
+        "name": "text_field",
+        "field_type": "text",
         "color": [
           0.0,
-          1.0,
+          0.8,
           0.0
         ],
         "key": "1",
-        "regex_pattern": "^P[A-Z<]KOR[A-Z<]{38,40}$"
+        "regex_pattern": ".*"
       },
       {
         "id": 1,
-        "name": "mrz2",
-        "field_type": "mrz",
+        "name": "number_field",
+        "field_type": "numeric",
         "color": [
           0.0,
           0.0,
-          1.0
+          0.8
         ],
         "key": "2",
-        "regex_pattern": "^[A-Z0-9]{9}[A-Z0-9]K[O0]R[0-9]{6}[0-9][MF<][0-9]{6}[0-9][A-Z0-9<]{14,16}$"
+        "regex_pattern": "^[0-9]+$"
       }
     ]
+  },
+  "ocr": {
+    "default_engine": "paddleocr-field",
+    "fallback_engines": [
+      "tesseract-field",
+      "easyocr-field"
+    ],
+    "auto_detect": true
   }
 }

@@ -748,6 +748,143 @@ Replace current text with extracted text?"""
         # Use GLib.idle_add to marshal to main thread
         GLib.idle_add(update_ui)
     
+    def on_profile_manager(self, action, param):
+        """Handle profile manager action"""
+        from .profile_selector_gtk4 import show_profile_selector
+        
+        selected_profile = show_profile_selector(self, self.project_manager.settings_manager)
+        if selected_profile:
+            # Profile was changed, update the UI
+            self._handle_profile_change(selected_profile)
+    
+    def _handle_profile_change(self, profile_name):
+        """Handle profile change and update UI accordingly"""
+        try:
+            # Update project manager configuration
+            self.project_manager.config = self.project_manager._get_config_from_settings()
+            
+            # Update class configuration and label manager
+            self.project_manager.class_config = self.project_manager._parse_class_config()
+            self.label_manager = LabelManager(self.project_manager.class_config)
+            
+            # Update validation engine with new classes
+            if hasattr(self.project_manager, 'validation_engine'):
+                self.project_manager.validation_engine = ValidationEngine(self.project_manager.class_config)
+            
+            # Update window title to show active profile
+            profile_display = profile_name if profile_name != "Base Settings" else "Default"
+            self.set_title(f"MRZ Label Editor - {profile_display}")
+            
+            # Refresh UI components with new profile data
+            GLib.idle_add(self._refresh_profile_ui)
+            
+            # Update default directory if specified and load new directory
+            new_directory = self.project_manager.settings_manager.get('default_directory')
+            if new_directory and Path(new_directory).exists():
+                self.project_manager.current_directory = Path(new_directory)
+                # Load directory and refresh file list
+                GLib.idle_add(self._load_directory_and_refresh, new_directory)
+            else:
+                # If no directory specified, clear current state
+                GLib.idle_add(self._clear_directory_state)
+            
+            # Save current profile for next session
+            state_file = self.project_manager.settings_manager.base_dir / "last_profile.txt"
+            try:
+                with open(state_file, 'w') as f:
+                    f.write(profile_name)
+            except Exception:
+                pass
+            
+            self.update_status(f"Switched to profile: {profile_display}")
+            
+        except Exception as e:
+            self.show_error(f"Error switching profiles: {e}")
+    
+    def _load_directory_and_refresh(self, directory_path):
+        """Load directory and refresh all related UI components"""
+        try:
+            # Load the directory through project manager
+            if hasattr(self.project_manager, 'load_directory'):
+                self.project_manager.load_directory(directory_path)
+            else:
+                # Fallback: manual directory loading
+                self.project_manager.current_directory = Path(directory_path)
+                self._manual_directory_load(directory_path)
+            
+            # Refresh file list and navigation
+            self._refresh_file_list()
+            self.update_navigation_buttons()
+            
+            # Load first image if available
+            if (hasattr(self.project_manager, 'image_files') and 
+                self.project_manager.image_files and 
+                len(self.project_manager.image_files) > 0):
+                self.project_manager.current_index = 0
+                self.load_current_image()
+            else:
+                # Clear canvas if no images
+                if hasattr(self, 'canvas'):
+                    self.canvas.clear_image()
+                    self.canvas.queue_draw()
+            
+        except Exception as e:
+            self.update_status(f"Error loading directory: {e}")
+    
+    def _manual_directory_load(self, directory_path):
+        """Manual directory loading when project manager method isn't available"""
+        directory = Path(directory_path)
+        if directory.exists() and directory.is_dir():
+            # Get image files
+            image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif'}
+            image_files = []
+            
+            for ext in image_extensions:
+                image_files.extend(directory.glob(f"*{ext}"))
+                image_files.extend(directory.glob(f"*{ext.upper()}"))
+            
+            # Sort files
+            image_files.sort()
+            
+            # Update project manager state
+            self.project_manager.image_files = [str(f) for f in image_files]
+            self.project_manager.current_index = -1
+            self.project_manager.current_image_path = None
+    
+    def _clear_directory_state(self):
+        """Clear directory-related state when no directory is specified"""
+        self.project_manager.image_files = []
+        self.project_manager.current_index = -1
+        self.project_manager.current_image_path = None
+        
+        # Clear UI elements
+        if hasattr(self, 'canvas'):
+            self.canvas.clear_image()
+            self.canvas.queue_draw()
+        
+        if hasattr(self, 'file_list'):
+            self.file_list.remove_all()
+        
+        self.update_navigation_buttons()
+        self.update_status("No directory loaded")
+    
+    def _refresh_file_list(self):
+        """Refresh the file list display"""
+        if not hasattr(self, 'file_list'):
+            return
+        
+        # Clear existing items
+        self.file_list.remove_all()
+        
+        # Add new items
+        if hasattr(self.project_manager, 'image_files'):
+            for image_file in self.project_manager.image_files:
+                filename = Path(image_file).name
+                self.file_list.append(filename)
+        
+        # Update directory statistics
+        self._update_directory_stats()
+    
     # Dialog helpers
     def show_help_dialog(self):
         """Show help dialog"""

@@ -1,0 +1,164 @@
+{
+  "window": {
+    "width": 1400,
+    "height": 900
+  },
+  "default_directory": "/home/jungwoo/Documents/metsakuur/data/vn_nid/img/back",
+  "classes": {
+    "classes": [
+      {
+        "id": 0,
+        "name": "MRZ_Line1",
+        "field_type": "mrz",
+        "color": [1.0, 0.0, 0.0],
+        "key": "1",
+        "regex_pattern": "^ID[A-Z]{3}[0-9]{12}[0-9]{1}[0-9]{12}<<[0-9]{1}$",
+        "description": "MRZ Line 1 - ID type and numbers"
+      },
+      {
+        "id": 1,
+        "name": "MRZ_Line2",
+        "field_type": "mrz",
+        "color": [0.0, 1.0, 0.0],
+        "key": "2",
+        "regex_pattern": "^[0-9]{6}[FM][0-9]{6}VNM<<<<<<<<<<<[0-9]{1}$",
+        "description": "MRZ Line 2 - Birth date and expiry"
+      },
+      {
+        "id": 2,
+        "name": "MRZ_Line3",
+        "field_type": "mrz",
+        "color": [0.0, 0.0, 1.0],
+        "key": "3",
+        "regex_pattern": "^[A-Z<]+$",
+        "description": "MRZ Line 3 - Name"
+      },
+      {
+        "id": 3,
+        "name": "Personal_Identification",
+        "field_type": "text",
+        "color": [1.0, 1.0, 0.0],
+        "key": "4",
+        "regex_pattern": "^(Nốt ruồi|Sẹo|Vết thương)\\s+[A-Z]\\s+[0-9,]+cm\\s+[a-záàạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ\\s]+$",
+        "description": "Physical identification marks"
+      },
+      {
+        "id": 4,
+        "name": "Issue_Date",
+        "field_type": "date",
+        "color": [1.0, 0.0, 1.0],
+        "key": "5",
+        "regex_pattern": "^(0[1-9]|[12]\\d|3[01])/(0[1-9]|1[0-2])/(20)\\d{2}$",
+        "description": "Date of card issuance"
+      },
+      {
+        "id": 5,
+        "name": "Authority_Title",
+        "field_type": "header",
+        "color": [0.0, 1.0, 1.0],
+        "key": "6",
+        "regex_pattern": "^CỤC\\s+TRƯỞNG\\s+CỤC\\s+CẢNH\\s+SÁT\\s+QUẢN\\s+LÝ\\s+HÀNH\\s+CHÍNH\\s+VỀ\\s+TRẬT\\s+TỰ\\s+XÃ\\s+HỘI$",
+        "description": "Issuing authority title"
+      },
+      {
+        "id": 6,
+        "name": "Authority_Name",
+        "field_type": "text",
+        "color": [0.5, 0.5, 0.0],
+        "key": "7",
+        "regex_pattern": "^[A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ][a-zA-Zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ\\s]+$",
+        "description": "Authority officer name"
+      },
+      {
+        "id": 7,
+        "name": "Left_Fingerprint",
+        "field_type": "image_region",
+        "color": [0.5, 0.0, 0.5],
+        "key": "8",
+        "regex_pattern": "",
+        "description": "Left index finger fingerprint"
+      },
+      {
+        "id": 8,
+        "name": "Right_Fingerprint",
+        "field_type": "image_region",
+        "color": [0.0, 0.5, 0.5],
+        "key": "9",
+        "regex_pattern": "",
+        "description": "Right index finger fingerprint"
+      },
+      {
+        "id": 9,
+        "name": "Chip_Region",
+        "field_type": "image_region",
+        "color": [0.7, 0.3, 0.0],
+        "key": "0",
+        "regex_pattern": "",
+        "description": "Electronic chip area"
+      },
+      {
+        "id": 10,
+        "name": "Authority_Seal",
+        "field_type": "image_region",
+        "color": [0.3, 0.7, 0.0],
+        "key": "q",
+        "regex_pattern": "",
+        "description": "Official authority seal"
+      }
+    ]
+  },
+  "validation": {
+    "strict_mode": true,
+    "regex_validation": true,
+    "mrz_validation": {
+      "enabled": true,
+      "checksum_validation": true,
+      "country_code": "VNM"
+    },
+    "cross_reference_validation": {
+      "enabled": true,
+      "check_against_front": false
+    }
+  },
+  "ocr": {
+    "default_engine": "paddleocr-field",
+    "fallback_engines": [
+      "tesseract-field",
+      "easyocr-field"
+    ],
+    "auto_detect": true,
+    "language_hints": ["vi", "en"],
+    "confidence_thresholds": {
+      "high_confidence": 0.9,
+      "medium_confidence": 0.7,
+      "low_confidence": 0.5
+    },
+    "mrz_specific": {
+      "character_whitelist": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<",
+      "line_detection": "strict",
+      "character_spacing": "fixed",
+      "monospace_font": true
+    },
+    "preprocessing": {
+      "denoise": true,
+      "contrast_enhancement": true,
+      "mrz_enhancement": true,
+      "fingerprint_skip": true
+    }
+  },
+  "ui": {
+    "mrz_layout_optimized": true,
+    "show_field_labels": true,
+    "highlight_mrz_sections": true,
+    "skip_image_regions_ocr": true
+  },
+  "field_positions": {
+    "MRZ_Line1": {"y": 0.65, "priority": 1},
+    "MRZ_Line2": {"y": 0.72, "priority": 1},
+    "MRZ_Line3": {"y": 0.79, "priority": 1},
+    "Personal_Identification": {"y": 0.15, "priority": 2},
+    "Issue_Date": {"y": 0.25, "priority": 2},
+    "Authority_Title": {"y": 0.35, "priority": 3},
+    "Authority_Name": {"y": 0.45, "priority": 3}
+  }
+}

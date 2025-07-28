@@ -13,6 +13,7 @@ from ..core.validation import ValidationEngine
 from .canvas_widget import ImageCanvas
 from .event_handlers import EventHandlerMixin
 from .filter_modal import FilterModal
+from .profile_selector import show_profile_selector
 
 
 class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
@@ -106,6 +107,7 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         menu = Gio.Menu()
         menu.append("Open Directory", "win.open-directory")
         menu.append("Open Image", "win.open-image")
+        menu.append("Profile Manager", "win.profile-manager")
         menu.append("Keyboard Shortcuts", "win.show-help")
         menu_button.set_menu_model(menu)
         
@@ -117,6 +119,7 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
             ("open-directory", self.on_open_directory),
             ("open-image", self.on_open_image),
             ("save", self.on_save),
+            ("profile-manager", self.on_profile_manager),
             ("show-help", lambda a, p: self.show_help_dialog())
         ]
         
@@ -492,6 +495,55 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         
         # Action buttons
         self._add_action_buttons(sidebar)
+    
+    def _refresh_class_dropdown(self):
+        """Refresh the class dropdown with current profile classes"""
+        if not hasattr(self, 'class_combo'):
+            return
+        
+        # Get current selection before clearing
+        current_selection = self.class_combo.get_selected()
+        
+        # Create new model with updated classes
+        class_model = Gtk.StringList()
+        for cls in self.project_manager.class_config["classes"]:
+            class_model.append(cls["name"])
+        
+        # Update the dropdown model
+        self.class_combo.set_model(class_model)
+        
+        # Try to restore previous selection or select first item
+        if current_selection != Gtk.INVALID_LIST_POSITION and current_selection < len(self.project_manager.class_config["classes"]):
+            self.class_combo.set_selected(current_selection)
+        elif len(self.project_manager.class_config["classes"]) > 0:
+            self.class_combo.set_selected(0)
+    
+    def _refresh_profile_ui(self):
+        """Comprehensive UI refresh for profile changes"""
+        # Refresh class dropdown
+        self._refresh_class_dropdown()
+        
+        # Clear selected label state
+        if hasattr(self, 'selected_info'):
+            self.selected_info.set_markup("<i>No box selected</i>")
+        
+        # Clear OCR text editor
+        if hasattr(self, 'ocr_text'):
+            buffer = self.ocr_text.get_buffer()
+            buffer.set_text("")
+        
+        # Reset canvas selection if exists
+        if hasattr(self, 'canvas') and self.canvas:
+            self.canvas.selected_box = None
+            self.canvas.queue_draw()
+        
+        # Update file info to reflect potential new directory
+        if hasattr(self, 'file_info'):
+            if self.project_manager.current_image_path:
+                filename = Path(self.project_manager.current_image_path).name
+                self.file_info.set_markup(f"<b>{filename}</b>")
+            else:
+                self.file_info.set_markup("<i>No file loaded</i>")
     
     def _add_action_buttons(self, sidebar):
         """Add action buttons"""

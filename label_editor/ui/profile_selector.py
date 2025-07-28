@@ -360,19 +360,29 @@ def show_profile_selector(parent_window, settings_manager) -> Optional[str]:
         Profile name if one was selected and loaded, None otherwise
     """
     dialog = ProfileSelectorDialog(parent_window, settings_manager)
-    dialog.show()
+    dialog.present()
     
-    response = dialog.run()
-    selected_profile = dialog.selected_profile
+    # GTK4 pattern - use response signal
+    result = None
     
-    dialog.destroy()
+    def on_response(dialog, response_id):
+        nonlocal result
+        selected_profile = dialog.selected_profile
+        
+        if response_id == Gtk.ResponseType.OK and selected_profile is not None:
+            # Load the selected profile
+            if selected_profile == "Base Settings":
+                settings_manager.reset_to_base()
+                result = "Base Settings"
+            elif settings_manager.load_profile(selected_profile):
+                result = selected_profile
+        
+        dialog.destroy()
     
-    if response == Gtk.ResponseType.OK and selected_profile is not None:
-        # Load the selected profile
-        if selected_profile == "Base Settings":
-            settings_manager.reset_to_base()
-            return "Base Settings"
-        elif settings_manager.load_profile(selected_profile):
-            return selected_profile
+    dialog.connect("response", on_response)
     
-    return None
+    # Run the main loop until dialog is closed
+    while dialog.get_visible():
+        dialog.get_display().sync()
+        
+    return result
