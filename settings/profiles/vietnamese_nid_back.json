@@ -1,111 +1,9 @@
 {
-  "window": {
-    "width": 1400,
-    "height": 900
-  },
-  "default_directory": "/home/jungwoo/Documents/metsakuur/data/vn_nid/img/back",
-  "classes": {
-    "classes": [
-      {
-        "id": 0,
-        "name": "MRZ_Line1",
-        "field_type": "mrz",
-        "color": [1.0, 0.0, 0.0],
-        "key": "1",
-        "regex_pattern": "^ID[A-Z]{3}[0-9]{12}[0-9]{1}[0-9]{12}<<[0-9]{1}$",
-        "description": "MRZ Line 1 - ID type and numbers"
-      },
-      {
-        "id": 1,
-        "name": "MRZ_Line2",
-        "field_type": "mrz",
-        "color": [0.0, 1.0, 0.0],
-        "key": "2",
-        "regex_pattern": "^[0-9]{6}[FM][0-9]{6}VNM<<<<<<<<<<<[0-9]{1}$",
-        "description": "MRZ Line 2 - Birth date and expiry"
-      },
-      {
-        "id": 2,
-        "name": "MRZ_Line3",
-        "field_type": "mrz",
-        "color": [0.0, 0.0, 1.0],
-        "key": "3",
-        "regex_pattern": "^[A-Z<]+$",
-        "description": "MRZ Line 3 - Name"
-      },
-      {
-        "id": 3,
-        "name": "Personal_Identification",
-        "field_type": "text",
-        "color": [1.0, 1.0, 0.0],
-        "key": "4",
-        "regex_pattern": "^(Nốt ruồi|Sẹo|Vết thương)\\s+[A-Z]\\s+[0-9,]+cm\\s+[a-záàạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ\\s]+$",
-        "description": "Physical identification marks"
-      },
-      {
-        "id": 4,
-        "name": "Issue_Date",
-        "field_type": "date",
-        "color": [1.0, 0.0, 1.0],
-        "key": "5",
-        "regex_pattern": "^(0[1-9]|[12]\\d|3[01])/(0[1-9]|1[0-2])/(20)\\d{2}$",
-        "description": "Date of card issuance"
-      },
-      {
-        "id": 5,
-        "name": "Authority_Title",
-        "field_type": "header",
-        "color": [0.0, 1.0, 1.0],
-        "key": "6",
-        "regex_pattern": "^CỤC\\s+TRƯỞNG\\s+CỤC\\s+CẢNH\\s+SÁT\\s+QUẢN\\s+LÝ\\s+HÀNH\\s+CHÍNH\\s+VỀ\\s+TRẬT\\s+TỰ\\s+XÃ\\s+HỘI$",
-        "description": "Issuing authority title"
-      },
-      {
-        "id": 6,
-        "name": "Authority_Name",
-        "field_type": "text",
-        "color": [0.5, 0.5, 0.0],
-        "key": "7",
-        "regex_pattern": "^[A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ][a-zA-Zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ\\s]+$",
-        "description": "Authority officer name"
-      },
-      {
-        "id": 7,
-        "name": "Left_Fingerprint",
-        "field_type": "image_region",
-        "color": [0.5, 0.0, 0.5],
-        "key": "8",
-        "regex_pattern": "",
-        "description": "Left index finger fingerprint"
-      },
-      {
-        "id": 8,
-        "name": "Right_Fingerprint",
-        "field_type": "image_region",
-        "color": [0.0, 0.5, 0.5],
-        "key": "9",
-        "regex_pattern": "",
-        "description": "Right index finger fingerprint"
-      },
-      {
-        "id": 9,
-        "name": "Chip_Region",
-        "field_type": "image_region",
-        "color": [0.7, 0.3, 0.0],
-        "key": "0",
-        "regex_pattern": "",
-        "description": "Electronic chip area"
-      },
-      {
-        "id": 10,
-        "name": "Authority_Seal",
-        "field_type": "image_region",
-        "color": [0.3, 0.7, 0.0],
-        "key": "q",
-        "regex_pattern": "",
-        "description": "Official authority seal"
-      }
-    ]
+  "ui": {
+    "mrz_layout_optimized": true,
+    "show_field_labels": true,
+    "highlight_mrz_sections": true,
+    "skip_image_regions_ocr": true
   },
   "validation": {
     "strict_mode": true,
@@ -120,6 +18,184 @@
       "check_against_front": false
     }
   },
+  "window": {
+    "width": 906,
+    "height": 511
+  },
+  "default_directory": "/home/jungwoo/Documents/metsakuur/data/vn_nid/img/back",
+  "classes": {
+    "classes": [
+      {
+        "id": 0,
+        "name": "MRZ_Line1",
+        "field_type": "mrz",
+        "color": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "key": "1",
+        "regex_pattern": "^ID[A-Z]{3}[0-9]{12}[0-9]{1}[0-9]{12}<<[0-9]{1}$",
+        "description": "MRZ Line 1 - ID type and numbers (both old and new formats)"
+      },
+      {
+        "id": 1,
+        "name": "MRZ_Line2",
+        "field_type": "mrz",
+        "color": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "key": "2",
+        "regex_pattern": "^[0-9]{6}[FM][0-9]{6}VNM<<<<<<<<<<<[0-9]{1}$",
+        "description": "MRZ Line 2 - Birth date and expiry (both old and new formats)"
+      },
+      {
+        "id": 2,
+        "name": "MRZ_Line3",
+        "field_type": "mrz",
+        "color": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "key": "3",
+        "regex_pattern": "^[A-Z<]+$",
+        "description": "MRZ Line 3 - Name (both old and new formats)"
+      },
+      {
+        "id": 3,
+        "name": "Personal_ID_Number_Old",
+        "field_type": "numeric",
+        "color": [
+          1.0,
+          1.0,
+          0.0
+        ],
+        "key": "4",
+        "regex_pattern": "^\\d{12}$",
+        "description": "12-digit personal identification number (OLD FORMAT ONLY - appears on back of old cards)"
+      },
+      {
+        "id": 4,
+        "name": "Date_Month_Year_Old",
+        "field_type": "date",
+        "color": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "key": "5",
+        "regex_pattern": "^(0[1-9]|[12]\\d|3[01])\\s+(0[1-9]|1[0-2])\\s+(19|20)\\d{2}$",
+        "description": "Date month year format (OLD FORMAT ONLY - separated by spaces)"
+      },
+      {
+        "id": 5,
+        "name": "Authority_Title",
+        "field_type": "header",
+        "color": [
+          0.0,
+          1.0,
+          1.0
+        ],
+        "key": "6",
+        "regex_pattern": "^C\u1ee4C\\s+TR\u01af\u1edeNG\\s+C\u1ee4C\\s+C\u1ea2NH\\s+S\u00c1T\\s+QU\u1ea2N\\s+L\u00dd\\s+H\u00c0NH\\s+CH\u00cdNH\\s+V\u1ec0\\s+TR\u1eacT\\s+T\u1ef0\\s+X\u00c3\\s+H\u1ed8I$",
+        "description": "Issuing authority title (OLD FORMAT ONLY - government department name)"
+      },
+      {
+        "id": 6,
+        "name": "Authority_Name",
+        "field_type": "text",
+        "color": [
+          0.5,
+          0.5,
+          0.0
+        ],
+        "key": "7",
+        "regex_pattern": "^[A-Z\u00c0\u00c1\u1ea0\u1ea2\u00c3\u00c2\u1ea6\u1ea4\u1eac\u1ea8\u1eaa\u0102\u1eb0\u1eae\u1eb6\u1eb2\u1eb4\u00c8\u00c9\u1eb8\u1eba\u1ebc\u00ca\u1ec0\u1ebe\u1ec6\u1ec2\u1ec4\u00cc\u00cd\u1eca\u1ec8\u0128\u00d2\u00d3\u1ecc\u1ece\u00d5\u00d4\u1ed2\u1ed0\u1ed8\u1ed4\u1ed6\u01a0\u1edc\u1eda\u1ee2\u1ede\u1ee0\u00d9\u00da\u1ee4\u1ee6\u0168\u01af\u1eea\u1ee8\u1ef0\u1eec\u1eee\u1ef2\u00dd\u1ef4\u1ef6\u1ef8\u0110][a-zA-Z\u00e0\u00e1\u1ea1\u1ea3\u00e3\u00e2\u1ea7\u1ea5\u1ead\u1ea9\u1eab\u0103\u1eb1\u1eaf\u1eb7\u1eb3\u1eb5\u00e8\u00e9\u1eb9\u1ebb\u1ebd\u00ea\u1ec1\u1ebf\u1ec7\u1ec3\u1ec5\u00ec\u00ed\u1ecb\u1ec9\u0129\u00f2\u00f3\u1ecd\u1ecf\u00f5\u00f4\u1ed3\u1ed1\u1ed9\u1ed5\u1ed7\u01a1\u1edd\u1edb\u1ee3\u1edf\u1ee1\u00f9\u00fa\u1ee5\u1ee7\u0169\u01b0\u1eeb\u1ee9\u1ef1\u1eed\u1eef\u1ef3\u00fd\u1ef5\u1ef7\u1ef9\u0111\\s]+$",
+        "description": "Authority officer name (OLD FORMAT ONLY - signing official)"
+      },
+      {
+        "id": 7,
+        "name": "Physical_Characteristics",
+        "field_type": "text",
+        "color": [
+          0.5,
+          0.0,
+          0.5
+        ],
+        "key": "8",
+        "regex_pattern": "^(N\u1ed1t ru\u1ed3i|S\u1eb9o|V\u1ebft th\u01b0\u01a1ng)\\s+[A-Z]\\s+[0-9,]+cm\\s+[a-z\u00e1\u00e0\u1ea1\u1ea3\u00e3\u00e2\u1ea7\u1ea5\u1ead\u1ea9\u1eab\u0103\u1eb1\u1eaf\u1eb7\u1eb3\u1eb5\u00e8\u00e9\u1eb9\u1ebb\u1ebd\u00ea\u1ec1\u1ebf\u1ec7\u1ec3\u1ec5\u00ec\u00ed\u1ecb\u1ec9\u0129\u00f2\u00f3\u1ecd\u1ecf\u00f5\u00f4\u1ed3\u1ed1\u1ed9\u1ed5\u1ed7\u01a1\u1edd\u1edb\u1ee3\u1edf\u1ee1\u00f9\u00fa\u1ee5\u1ee7\u0169\u01b0\u1eeb\u1ee9\u1ef1\u1eed\u1eef\u1ef3\u00fd\u1ef5\u1ef7\u1ef9\u0111\\s]+$",
+        "description": "Physical identification marks (OLD FORMAT ONLY - scars, moles, height)"
+      },
+      {
+        "id": 8,
+        "name": "Place_Of_Residence_Line1",
+        "field_type": "address",
+        "color": [
+          0.0,
+          0.5,
+          0.5
+        ],
+        "key": "9",
+        "regex_pattern": "^[A-Z\u00e0\u00e1\u1ea1\u1ea3\u00e3\u00e2\u1ea7\u1ea5\u1ead\u1ea9\u1eab\u0103\u1eb1\u1eaf\u1eb7\u1eb3\u1eb5\u00e8\u00e9\u1eb9\u1ebb\u1ebd\u00ea\u1ec1\u1ebf\u1ec7\u1ec3\u1ec5\u00ec\u00ed\u1ecb\u1ec9\u0129\u00f2\u00f3\u1ecd\u1ecf\u00f5\u00f4\u1ed3\u1ed1\u1ed9\u1ed5\u1ed7\u01a1\u1edd\u1edb\u1ee3\u1edf\u1ee1\u00f9\u00fa\u1ee5\u1ee7\u0169\u01b0\u1eeb\u1ee9\u1ef1\u1eed\u1eef\u1ef3\u00fd\u1ef5\u1ef7\u1ef9\u01110-9][a-zA-Z\u00e0\u00e1\u1ea1\u1ea3\u00e3\u00e2\u1ea7\u1ea5\u1ead\u1ea9\u1eab\u0103\u1eb1\u1eaf\u1eb7\u1eb3\u1eb5\u00e8\u00e9\u1eb9\u1ebb\u1ebd\u00ea\u1ec1\u1ebf\u1ec7\u1ec3\u1ec5\u00ec\u00ed\u1ecb\u1ec9\u0129\u00f2\u00f3\u1ecd\u1ecf\u00f5\u00f4\u1ed3\u1ed1\u1ed9\u1ed5\u1ed7\u01a1\u1edd\u1edb\u1ee3\u1edf\u1ee1\u00f9\u00fa\u1ee5\u1ee7\u0169\u01b0\u1eeb\u1ee9\u1ef1\u1eed\u1eef\u1ef3\u00fd\u1ef5\u1ef7\u1ef9\u0111\\s,.-/0-9]+$",
+        "description": "Place of residence line 1 (NEW FORMAT ONLY - current address)"
+      },
+      {
+        "id": 9,
+        "name": "Place_Of_Residence_Line2",
+        "field_type": "address",
+        "color": [
+          0.7,
+          0.3,
+          0.0
+        ],
+        "key": "0",
+        "regex_pattern": "^[A-Z\u00e0\u00e1\u1ea1\u1ea3\u00e3\u00e2\u1ea7\u1ea5\u1ead\u1ea9\u1eab\u0103\u1eb1\u1eaf\u1eb7\u1eb3\u1eb5\u00e8\u00e9\u1eb9\u1ebb\u1ebd\u00ea\u1ec1\u1ebf\u1ec7\u1ec3\u1ec5\u00ec\u00ed\u1ecb\u1ec9\u0129\u00f2\u00f3\u1ecd\u1ecf\u00f5\u00f4\u1ed3\u1ed1\u1ed9\u1ed5\u1ed7\u01a1\u1edd\u1edb\u1ee3\u1edf\u1ee1\u00f9\u00fa\u1ee5\u1ee7\u0169\u01b0\u1eeb\u1ee9\u1ef1\u1eed\u1eef\u1ef3\u00fd\u1ef5\u1ef7\u1ef9\u01110-9][a-zA-Z\u00e0\u00e1\u1ea1\u1ea3\u00e3\u00e2\u1ea7\u1ea5\u1ead\u1ea9\u1eab\u0103\u1eb1\u1eaf\u1eb7\u1eb3\u1eb5\u00e8\u00e9\u1eb9\u1ebb\u1ebd\u00ea\u1ec1\u1ebf\u1ec7\u1ec3\u1ec5\u00ec\u00ed\u1ecb\u1ec9\u0129\u00f2\u00f3\u1ecd\u1ecf\u00f5\u00f4\u1ed3\u1ed1\u1ed9\u1ed5\u1ed7\u01a1\u1edd\u1edb\u1ee3\u1edf\u1ee1\u00f9\u00fa\u1ee5\u1ee7\u0169\u01b0\u1eeb\u1ee9\u1ef1\u1eed\u1eef\u1ef3\u00fd\u1ef5\u1ef7\u1ef9\u0111\\s,.-/0-9]+$",
+        "description": "Place of residence line 2 (NEW FORMAT ONLY - current address continued)"
+      },
+      {
+        "id": 10,
+        "name": "Place_Of_Birth",
+        "field_type": "address",
+        "color": [
+          0.3,
+          0.7,
+          0.0
+        ],
+        "key": "q",
+        "regex_pattern": "^[A-Z\u00e0\u00e1\u1ea1\u1ea3\u00e3\u00e2\u1ea7\u1ea5\u1ead\u1ea9\u1eab\u0103\u1eb1\u1eaf\u1eb7\u1eb3\u1eb5\u00e8\u00e9\u1eb9\u1ebb\u1ebd\u00ea\u1ec1\u1ebf\u1ec7\u1ec3\u1ec5\u00ec\u00ed\u1ecb\u1ec9\u0129\u00f2\u00f3\u1ecd\u1ecf\u00f5\u00f4\u1ed3\u1ed1\u1ed9\u1ed5\u1ed7\u01a1\u1edd\u1edb\u1ee3\u1edf\u1ee1\u00f9\u00fa\u1ee5\u1ee7\u0169\u01b0\u1eeb\u1ee9\u1ef1\u1eed\u1eef\u1ef3\u00fd\u1ef5\u1ef7\u1ef9\u0111][a-zA-Z\u00e0\u00e1\u1ea1\u1ea3\u00e3\u00e2\u1ea7\u1ea5\u1ead\u1ea9\u1eab\u0103\u1eb1\u1eaf\u1eb7\u1eb3\u1eb5\u00e8\u00e9\u1eb9\u1ebb\u1ebd\u00ea\u1ec1\u1ebf\u1ec7\u1ec3\u1ec5\u00ec\u00ed\u1ecb\u1ec9\u0129\u00f2\u00f3\u1ecd\u1ecf\u00f5\u00f4\u1ed3\u1ed1\u1ed9\u1ed5\u1ed7\u01a1\u1edd\u1edb\u1ee3\u1edf\u1ee1\u00f9\u00fa\u1ee5\u1ee7\u0169\u01b0\u1eeb\u1ee9\u1ef1\u1eed\u1eef\u1ef3\u00fd\u1ef5\u1ef7\u1ef9\u0111\\s,.-]+$",
+        "description": "Place of birth (NEW FORMAT ONLY - birth registration location)"
+      },
+      {
+        "id": 11,
+        "name": "Date_Of_Issue",
+        "field_type": "date",
+        "color": [
+          0.8,
+          0.2,
+          0.8
+        ],
+        "key": "w",
+        "regex_pattern": "^(0[1-9]|[12]\\d|3[01])/(0[1-9]|1[0-2])/(20)\\d{2}$",
+        "description": "Date of issue (NEW FORMAT ONLY - when card was issued)"
+      },
+      {
+        "id": 12,
+        "name": "Date_Of_Expiry",
+        "field_type": "date",
+        "color": [
+          0.2,
+          0.8,
+          0.8
+        ],
+        "key": "e",
+        "regex_pattern": "^(0[1-9]|[12]\\d|3[01])/(0[1-9]|1[0-2])/(20)\\d{2}$",
+        "description": "Date of expiry (NEW FORMAT ONLY - when card expires)"
+      }
+    ]
+  },
   "ocr": {
     "default_engine": "paddleocr-field",
     "fallback_engines": [
@@ -127,7 +203,10 @@
       "easyocr-field"
     ],
     "auto_detect": true,
-    "language_hints": ["vi", "en"],
+    "language_hints": [
+      "vi",
+      "en"
+    ],
     "confidence_thresholds": {
       "high_confidence": 0.9,
       "medium_confidence": 0.7,
@@ -146,19 +225,34 @@
       "fingerprint_skip": true
     }
   },
-  "ui": {
-    "mrz_layout_optimized": true,
-    "show_field_labels": true,
-    "highlight_mrz_sections": true,
-    "skip_image_regions_ocr": true
-  },
   "field_positions": {
-    "MRZ_Line1": {"y": 0.65, "priority": 1},
-    "MRZ_Line2": {"y": 0.72, "priority": 1},
-    "MRZ_Line3": {"y": 0.79, "priority": 1},
-    "Personal_Identification": {"y": 0.15, "priority": 2},
-    "Issue_Date": {"y": 0.25, "priority": 2},
-    "Authority_Title": {"y": 0.35, "priority": 3},
-    "Authority_Name": {"y": 0.45, "priority": 3}
+    "MRZ_Line1": {
+      "y": 0.65,
+      "priority": 1
+    },
+    "MRZ_Line2": {
+      "y": 0.72,
+      "priority": 1
+    },
+    "MRZ_Line3": {
+      "y": 0.79,
+      "priority": 1
+    },
+    "Personal_Identification": {
+      "y": 0.15,
+      "priority": 2
+    },
+    "Issue_Date": {
+      "y": 0.25,
+      "priority": 2
+    },
+    "Authority_Title": {
+      "y": 0.35,
+      "priority": 3
+    },
+    "Authority_Name": {
+      "y": 0.45,
+      "priority": 3
+    }
   }
 }

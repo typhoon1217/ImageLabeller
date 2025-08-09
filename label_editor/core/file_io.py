@@ -57,7 +57,7 @@ class DATParser:
                     ocr_text = ocr_text.encode(
                         'ascii', 'ignore').decode('ascii')
 
-                    line = f"{box.class_id} {box.x} {box.y} {box.width} {box.height} #{ocr_text}"
+                    line = f"{box.class_id} {int(box.x)} {int(box.y)} {int(box.width)} {int(box.height)} #{ocr_text}"
                     lines.append(line)
                 content = '\r\n'.join(lines)
                 f.write(content.encode('ascii'))

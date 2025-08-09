@@ -245,6 +245,17 @@ class EventHandlerMixin:
                         if hasattr(self, 'canvas'):
                             self.canvas.grab_focus()
     
+    def auto_save_current(self):
+        """Auto-save current image data before navigating to another image"""
+        if (hasattr(self, 'project_manager') and 
+            self.project_manager.current_dat_path and 
+            hasattr(self, 'unsaved_changes') and 
+            self.unsaved_changes):
+            try:
+                self.save_dat_file(str(self.project_manager.current_dat_path))
+            except Exception as e:
+                print(f"Auto-save failed: {e}")
+    
     # Menu action handlers
     def on_open_directory(self, action, param):
         """Handle open directory action"""
@@ -813,7 +824,7 @@ Replace current text with extracted text?"""
                 self._manual_directory_load(directory_path)
             
             # Refresh file list and navigation
-            self._refresh_file_list()
+            self.update_file_list()
             self.update_navigation_buttons()
             
             # Load first image if available

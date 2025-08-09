@@ -15,8 +15,8 @@
     }
   },
   "window": {
-    "width": 941,
-    "height": 521
+    "width": 906,
+    "height": 1036
   },
   "default_directory": "/home/jungwoo/Documents/metsakuur/data/vn_nid/img/front",
   "classes": {
@@ -25,52 +25,76 @@
         "id": 0,
         "name": "ID_Number",
         "field_type": "numeric",
-        "color": [1.0, 0.0, 0.0],
+        "color": [
+          1.0,
+          0.0,
+          0.0
+        ],
         "key": "1",
         "regex_pattern": "^\\d{12}$",
-        "description": "12-digit citizen identity number"
+        "description": "12-digit personal identification number (both old and new formats)"
       },
       {
         "id": 1,
         "name": "Full_Name",
         "field_type": "text",
-        "color": [0.0, 1.0, 0.0],
+        "color": [
+          0.0,
+          1.0,
+          0.0
+        ],
         "key": "2",
         "regex_pattern": "^[A-Z\u00c0\u00c1\u1ea0\u1ea2\u00c3\u00c2\u1ea6\u1ea4\u1eac\u1ea8\u1eaa\u0102\u1eb0\u1eae\u1eb6\u1eb2\u1eb4\u00c8\u00c9\u1eb8\u1eba\u1ebc\u00ca\u1ec0\u1ebe\u1ec6\u1ec2\u1ec4\u00cc\u00cd\u1eca\u1ec8\u0128\u00d2\u00d3\u1ecc\u1ece\u00d5\u00d4\u1ed2\u1ed0\u1ed8\u1ed4\u1ed6\u01a0\u1edc\u1eda\u1ee2\u1ede\u1ee0\u00d9\u00da\u1ee4\u1ee6\u0168\u01af\u1eea\u1ee8\u1ef0\u1eec\u1eee\u1ef2\u00dd\u1ef4\u1ef6\u1ef8\u0110][A-Z\u00c0\u00c1\u1ea0\u1ea2\u00c3\u00c2\u1ea6\u1ea4\u1eac\u1ea8\u1eaa\u0102\u1eb0\u1eae\u1eb6\u1eb2\u1eb4\u00c8\u00c9\u1eb8\u1eba\u1ebc\u00ca\u1ec0\u1ebe\u1ec6\u1ec2\u1ec4\u00cc\u00cd\u1eca\u1ec8\u0128\u00d2\u00d3\u1ecc\u1ece\u00d5\u00d4\u1ed2\u1ed0\u1ed8\u1ed4\u1ed6\u01a0\u1edc\u1eda\u1ee2\u1ede\u1ee0\u00d9\u00da\u1ee4\u1ee6\u0168\u01af\u1eea\u1ee8\u1ef0\u1eec\u1eee\u1ef2\u00dd\u1ef4\u1ef6\u1ef8\u0110\\s]+$",
-        "description": "Full name in Vietnamese uppercase"
+        "description": "Full name in Vietnamese uppercase (both old and new formats)"
       },
       {
         "id": 2,
         "name": "Date_Of_Birth",
         "field_type": "date",
-        "color": [0.0, 0.0, 1.0],
+        "color": [
+          0.0,
+          0.0,
+          1.0
+        ],
         "key": "3",
         "regex_pattern": "^(0[1-9]|[12]\\d|3[01])/(0[1-9]|1[0-2])/(19|20)\\d{2}$",
-        "description": "Date of birth DD/MM/YYYY"
+        "description": "Date of birth DD/MM/YYYY (both old and new formats)"
       },
       {
         "id": 3,
         "name": "Sex",
         "field_type": "enum",
-        "color": [1.0, 1.0, 0.0],
+        "color": [
+          1.0,
+          1.0,
+          0.0
+        ],
         "key": "4",
         "regex_pattern": "^(Nam|N\u1eef)$",
-        "description": "Gender - Nam or N\u1eef"
+        "description": "Gender - Nam or N\u1eef (both old and new formats)"
       },
       {
         "id": 4,
         "name": "Nationality",
         "field_type": "text",
-        "color": [1.0, 0.0, 1.0],
+        "color": [
+          1.0,
+          0.0,
+          1.0
+        ],
         "key": "5",
         "regex_pattern": "^Vi\u1ec7t\\s+Nam$",
-        "description": "Vietnamese nationality"
+        "description": "Vietnamese nationality (both old and new formats)"
       },
       {
         "id": 5,
         "name": "Place_Of_Origin",
         "field_type": "address",
-        "color": [0.0, 1.0, 1.0],
+        "color": [
+          0.0,
+          1.0,
+          1.0
+        ],
         "key": "6",
         "regex_pattern": "^[A-Z\u00e0\u00e1\u1ea1\u1ea3\u00e3\u00e2\u1ea7\u1ea5\u1ead\u1ea9\u1eab\u0103\u1eb1\u1eaf\u1eb7\u1eb3\u1eb5\u00e8\u00e9\u1eb9\u1ebb\u1ebd\u00ea\u1ec1\u1ebf\u1ec7\u1ec3\u1ec5\u00ec\u00ed\u1ecb\u1ec9\u0129\u00f2\u00f3\u1ecd\u1ecf\u00f5\u00f4\u1ed3\u1ed1\u1ed9\u1ed5\u1ed7\u01a1\u1edd\u1edb\u1ee3\u1edf\u1ee1\u00f9\u00fa\u1ee5\u1ee7\u0169\u01b0\u1eeb\u1ee9\u1ef1\u1eed\u1eef\u1ef3\u00fd\u1ef5\u1ef7\u1ef9\u0111][a-zA-Z\u00e0\u00e1\u1ea1\u1ea3\u00e3\u00e2\u1ea7\u1ea5\u1ead\u1ea9\u1eab\u0103\u1eb1\u1eaf\u1eb7\u1eb3\u1eb5\u00e8\u00e9\u1eb9\u1ebb\u1ebd\u00ea\u1ec1\u1ebf\u1ec7\u1ec3\u1ec5\u00ec\u00ed\u1ecb\u1ec9\u0129\u00f2\u00f3\u1ecd\u1ecf\u00f5\u00f4\u1ed3\u1ed1\u1ed9\u1ed5\u1ed7\u01a1\u1edd\u1edb\u1ee3\u1edf\u1ee1\u00f9\u00fa\u1ee5\u1ee7\u0169\u01b0\u1eeb\u1ee9\u1ef1\u1eed\u1eef\u1ef3\u00fd\u1ef5\u1ef7\u1ef9\u0111\\s,.-]+$",
         "description": "Place of birth/origin"
@@ -79,7 +103,11 @@
         "id": 6,
         "name": "Date_Of_Expiry",
         "field_type": "date",
-        "color": [0.5, 0.0, 0.5],
+        "color": [
+          0.5,
+          0.0,
+          0.5
+        ],
         "key": "7",
         "regex_pattern": "^((0[1-9]|[12]\\d|3[01])/(0[1-9]|1[0-2])/(20)\\d{2}|Kh\u00f4ng\\s+th\u1eddi\\s+h\u1ea1n)$",
         "description": "Expiry date or no expiry"
@@ -88,7 +116,11 @@
         "id": 7,
         "name": "Place_Of_Residence_Line1",
         "field_type": "address",
-        "color": [0.5, 0.5, 0.0],
+        "color": [
+          0.5,
+          0.5,
+          0.0
+        ],
         "key": "8",
         "regex_pattern": "^[A-Z\u00e0\u00e1\u1ea1\u1ea3\u00e3\u00e2\u1ea7\u1ea5\u1ead\u1ea9\u1eab\u0103\u1eb1\u1eaf\u1eb7\u1eb3\u1eb5\u00e8\u00e9\u1eb9\u1ebb\u1ebd\u00ea\u1ec1\u1ebf\u1ec7\u1ec3\u1ec5\u00ec\u00ed\u1ecb\u1ec9\u0129\u00f2\u00f3\u1ecd\u1ecf\u00f5\u00f4\u1ed3\u1ed1\u1ed9\u1ed5\u1ed7\u01a1\u1edd\u1edb\u1ee3\u1edf\u1ee1\u00f9\u00fa\u1ee5\u1ee7\u0169\u01b0\u1eeb\u1ee9\u1ef1\u1eed\u1eef\u1ef3\u00fd\u1ef5\u1ef7\u1ef9\u01110-9][a-zA-Z\u00e0\u00e1\u1ea1\u1ea3\u00e3\u00e2\u1ea7\u1ea5\u1ead\u1ea9\u1eab\u0103\u1eb1\u1eaf\u1eb7\u1eb3\u1eb5\u00e8\u00e9\u1eb9\u1ebb\u1ebd\u00ea\u1ec1\u1ebf\u1ec7\u1ec3\u1ec5\u00ec\u00ed\u1ecb\u1ec9\u0129\u00f2\u00f3\u1ecd\u1ecf\u00f5\u00f4\u1ed3\u1ed1\u1ed9\u1ed5\u1ed7\u01a1\u1edd\u1edb\u1ee3\u1edf\u1ee1\u00f9\u00fa\u1ee5\u1ee7\u0169\u01b0\u1eeb\u1ee9\u1ef1\u1eed\u1eef\u1ef3\u00fd\u1ef5\u1ef7\u1ef9\u0111\\s,.-/0-9]+$",
         "description": "Current residence address - Line 1"
@@ -97,7 +129,11 @@
         "id": 8,
         "name": "Place_Of_Residence_Line2",
         "field_type": "address",
-        "color": [0.4, 0.4, 0.1],
+        "color": [
+          0.4,
+          0.4,
+          0.1
+        ],
         "key": "9",
         "regex_pattern": "^[A-Z\u00e0\u00e1\u1ea1\u1ea3\u00e3\u00e2\u1ea7\u1ea5\u1ead\u1ea9\u1eab\u0103\u1eb1\u1eaf\u1eb7\u1eb3\u1eb5\u00e8\u00e9\u1eb9\u1ebb\u1ebd\u00ea\u1ec1\u1ebf\u1ec7\u1ec3\u1ec5\u00ec\u00ed\u1ecb\u1ec9\u0129\u00f2\u00f3\u1ecd\u1ecf\u00f5\u00f4\u1ed3\u1ed1\u1ed9\u1ed5\u1ed7\u01a1\u1edd\u1edb\u1ee3\u1edf\u1ee1\u00f9\u00fa\u1ee5\u1ee7\u0169\u01b0\u1eeb\u1ee9\u1ef1\u1eed\u1eef\u1ef3\u00fd\u1ef5\u1ef7\u1ef9\u01110-9][a-zA-Z\u00e0\u00e1\u1ea1\u1ea3\u00e3\u00e2\u1ea7\u1ea5\u1ead\u1ea9\u1eab\u0103\u1eb1\u1eaf\u1eb7\u1eb3\u1eb5\u00e8\u00e9\u1eb9\u1ebb\u1ebd\u00ea\u1ec1\u1ebf\u1ec7\u1ec3\u1ec5\u00ec\u00ed\u1ecb\u1ec9\u0129\u00f2\u00f3\u1ecd\u1ecf\u00f5\u00f4\u1ed3\u1ed1\u1ed9\u1ed5\u1ed7\u01a1\u1edd\u1edb\u1ee3\u1edf\u1ee1\u00f9\u00fa\u1ee5\u1ee7\u0169\u01b0\u1eeb\u1ee9\u1ef1\u1eed\u1eef\u1ef3\u00fd\u1ef5\u1ef7\u1ef9\u0111\\s,.-/0-9]+$",
         "description": "Current residence address - Line 2"
@@ -106,9 +142,15 @@
   },
   "ocr": {
     "default_engine": "paddleocr-field",
-    "fallback_engines": ["tesseract-field", "easyocr-field"],
+    "fallback_engines": [
+      "tesseract-field",
+      "easyocr-field"
+    ],
     "auto_detect": true,
-    "language_hints": ["vi", "en"],
+    "language_hints": [
+      "vi",
+      "en"
+    ],
     "confidence_thresholds": {
       "high_confidence": 0.9,
       "medium_confidence": 0.7,
@@ -121,4 +163,3 @@
     }
   }
 }
-
