@@ -236,6 +236,7 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         self.canvas.on_boxes_changed = self.on_boxes_changed
         self.canvas.is_text_editing_active = lambda: self._text_editing_active
         self.canvas.on_image_rotated = self._on_image_rotated
+        self.canvas.on_start_typing = self.on_canvas_start_typing
         
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_child(self.canvas)
@@ -474,6 +475,11 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
         focus_controller.connect('enter', self.on_text_focus_in)
         focus_controller.connect('leave', self.on_text_focus_out)
         self.ocr_text.add_controller(focus_controller)
+        
+        # Add key handler for ESC key in text view
+        text_key_controller = Gtk.EventControllerKey()
+        text_key_controller.connect('key-pressed', self.on_ocr_text_key_pressed)
+        self.ocr_text.add_controller(text_key_controller)
         
         # Class selector
         class_label = Gtk.Label()

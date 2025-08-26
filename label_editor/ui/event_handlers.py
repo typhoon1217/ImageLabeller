@@ -438,6 +438,25 @@ class EventHandlerMixin:
         """Handle text focus out"""
         self._text_editing_active = False
     
+    def on_canvas_start_typing(self, initial_keyval):
+        """Handle when user presses 'i' to enter insert mode while a label is selected"""
+        if hasattr(self, 'ocr_text') and hasattr(self, 'canvas') and self.canvas.selected_box:
+            # Focus the OCR text editor
+            self.ocr_text.grab_focus()
+            
+            # Clear the text field for fresh input (don't insert 'i')
+            buffer = self.ocr_text.get_buffer()
+            buffer.set_text("", -1)
+    
+    def on_ocr_text_key_pressed(self, controller, keyval, keycode, state):
+        """Handle key press in OCR text view"""
+        if keyval == Gdk.KEY_Escape:
+            # Return focus to canvas
+            if hasattr(self, 'canvas'):
+                self.canvas.grab_focus()
+            return True
+        return False
+    
     def on_class_changed(self, combo, param=None):
         """Handle class combo change"""
         if hasattr(self, 'canvas') and self.canvas.selected_box and hasattr(self, 'project_manager'):

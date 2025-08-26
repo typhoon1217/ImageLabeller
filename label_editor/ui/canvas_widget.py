@@ -520,6 +520,12 @@ class ImageCanvas(Gtk.DrawingArea):
                     self.on_box_selected(None)
                 self.queue_draw()
             return True
+        # Check if 'i' key is pressed to enter insert/typing mode
+        elif keyval == Gdk.KEY_i and self.selected_box and not ctrl_pressed:
+            # Signal to parent that user wants to start typing
+            if hasattr(self, 'on_start_typing'):
+                self.on_start_typing(keyval)
+                return True
         else:
             if self.selected_box:
                 for cls in self.class_config["classes"]:
