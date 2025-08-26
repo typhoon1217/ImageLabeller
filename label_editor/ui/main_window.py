@@ -737,19 +737,32 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
                 self.file_list_store.append(file_info['name'])
     
     def update_file_list_colors(self):
-        """Update file list colors by swapping selection model"""
+        """Update file list colors by refreshing the list view items"""
         if hasattr(self, 'file_list_store') and hasattr(self, 'file_list_selection'):
             print(f"update_file_list_colors called - updating {len(self.file_list_data) if hasattr(self, 'file_list_data') else 0} items")
+            
+            # Save current selection and scroll position
+            current_selected = self.file_list_selection.get_selected()
             
             # Update the file list data to get latest validation status
             self.file_list_data = self._get_enriched_file_list()
             
-            # For now, just update the data without forcing a visual refresh
-            # The colors will update when the user navigates or the list naturally refreshes
-            print("Updated file_list_data with new confirmation status")
+            # Force the ListView to rebind all visible items by triggering a model change
+            # We'll use a trick: temporarily set a different model and then restore it
+            if hasattr(self, 'file_list_view'):
+                # Store the current factory
+                current_factory = self.file_list_view.get_factory()
+                
+                # Force rebind by resetting the factory
+                # This will cause all visible items to be rebound with updated data
+                self.file_list_view.set_factory(None)
+                self.file_list_view.set_factory(current_factory)
+                
+                # Restore selection if it was valid
+                if current_selected != Gtk.INVALID_LIST_POSITION:
+                    self.file_list_selection.set_selected(current_selected)
             
-            # TODO: Find a way to update colors without scroll reset
-            # For now, skip the visual update to prevent scroll reset
+            print("Updated file_list_data and refreshed display")
     
     def update_directory_stats(self):
         """Update directory statistics display"""
@@ -1059,9 +1072,21 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
             
             self.label_manager.boxes = self.canvas.boxes
             dat_path = Path(self.project_manager.current_image_path).with_suffix('.dat')
-            self.label_manager.save_to_file(str(dat_path))
-            self.unsaved_changes = False
-            self.update_title()
+            if self.label_manager.save_to_file(str(dat_path)):
+                self.unsaved_changes = False
+                self.update_title()
+                
+                # Update validation cache for this specific file
+                if hasattr(self.project_manager, 'validation_engine'):
+                    # Validate the newly saved DAT file
+                    validation_result = self.project_manager.validation_engine.validate_dat_file(str(dat_path))
+                    # Update the cache for the current image
+                    self.project_manager.validation_engine.validation_cache[str(self.project_manager.current_image_path)] = validation_result
+                
+                # Update file list colors to reflect new validation status
+                self.update_file_list_colors()
+                # Update directory statistics
+                self.update_directory_stats()
     
     def save_dat_file(self, file_path: str):
         """Save DAT file"""
@@ -1070,6 +1095,14 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
             if self.label_manager.save_to_file(file_path):
                 self.unsaved_changes = False
                 self.update_title()
+                
+                # Update validation cache for this specific file
+                if hasattr(self.project_manager, 'validation_engine') and hasattr(self.project_manager, 'current_image_path'):
+                    # Validate the newly saved DAT file
+                    validation_result = self.project_manager.validation_engine.validate_dat_file(file_path)
+                    # Update the cache for the current image
+                    self.project_manager.validation_engine.validation_cache[str(self.project_manager.current_image_path)] = validation_result
+                
                 # Update file list colors to reflect new validation status
                 self.update_file_list_colors()
                 # Update directory statistics
@@ -1102,9 +1135,21 @@ class LabelEditorWindow(Gtk.ApplicationWindow, EventHandlerMixin):
                 hasattr(self, 'canvas')):
                 self.label_manager.boxes = self.canvas.boxes
                 dat_path = Path(self.project_manager.current_image_path).with_suffix('.dat')
-                self.label_manager.save_to_file(str(dat_path))
-                self.unsaved_changes = False
-                self.update_title()
+                if self.label_manager.save_to_file(str(dat_path)):
+                    self.unsaved_changes = False
+                    self.update_title()
+                    
+                    # Update validation cache for this specific file
+                    if hasattr(self.project_manager, 'validation_engine'):
+                        # Validate the newly saved DAT file
+                        validation_result = self.project_manager.validation_engine.validate_dat_file(str(dat_path))
+                        # Update the cache for the current image
+                        self.project_manager.validation_engine.validation_cache[str(self.project_manager.current_image_path)] = validation_result
+                    
+                    # Update file list colors to reflect new validation status
+                    self.update_file_list_colors()
+                    # Update directory statistics
+                    self.update_directory_stats()
         except Exception as e:
             self.show_error(f"Auto-save error: {e}")
         

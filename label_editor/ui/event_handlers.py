@@ -130,6 +130,35 @@ class EventHandlerMixin:
         self._editing_in_progress = True
         self.update_title()
         
+        # If this is the first box being added to an image that had no DAT file,
+        # we should update the validation status immediately for better UX
+        if hasattr(self, 'canvas') and hasattr(self.project_manager, 'validation_engine'):
+            current_image_path = self.project_manager.current_image_path
+            if current_image_path:
+                # Check if this file had no_dat status
+                current_status = self.project_manager.validation_engine.get_file_validation_status(str(current_image_path))
+                if current_status == 'no_dat' and len(self.canvas.boxes) > 0:
+                    # Update the validation cache to reflect that we now have data (even if unsaved)
+                    # Mark as "valid" temporarily to show user that data exists
+                    self.project_manager.validation_engine.validation_cache[str(current_image_path)] = {
+                        'valid': True,
+                        'no_dat': False,
+                        'missing_classes': False,
+                        'regex_errors': False,
+                        'box_count': len(self.canvas.boxes),
+                        'boxes': self.canvas.boxes
+                    }
+                elif current_status != 'no_dat' and len(self.canvas.boxes) == 0:
+                    # If all boxes were deleted, mark as no_dat again
+                    self.project_manager.validation_engine.validation_cache[str(current_image_path)] = {
+                        'valid': False,
+                        'no_dat': True,
+                        'missing_classes': False,
+                        'regex_errors': False,
+                        'box_count': 0,
+                        'boxes': []
+                    }
+        
         # Update file list colors since validation status may have changed
         self.update_file_list_colors()
         # Update directory statistics
@@ -253,6 +282,7 @@ class EventHandlerMixin:
             self.unsaved_changes):
             try:
                 self.save_dat_file(str(self.project_manager.current_dat_path))
+                # Note: validation cache update is handled in save_dat_file method
             except Exception as e:
                 print(f"Auto-save failed: {e}")
     
