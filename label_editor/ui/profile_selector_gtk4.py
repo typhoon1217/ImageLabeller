@@ -127,29 +127,31 @@ def show_profile_selector(parent_window, settings_manager) -> Optional[str]:
     """
     dialog = ProfileSelectorDialog(parent_window, settings_manager)
     
-    # GTK4 async pattern with callback
-    result = None
+    # Store result in a container that can be accessed from the callback
+    result_container = {'result': None, 'completed': False}
     
     def on_response(dialog, response_id):
-        nonlocal result
         selected_profile = dialog.selected_profile
         
         if response_id == Gtk.ResponseType.OK and selected_profile is not None:
             # Load the selected profile
             if selected_profile == "Base Settings":
                 settings_manager.reset_to_base()
-                result = "Base Settings"
+                result_container['result'] = "Base Settings"
             elif settings_manager.load_profile(selected_profile):
-                result = selected_profile
+                result_container['result'] = selected_profile
         
-        dialog.close()
+        result_container['completed'] = True
+        dialog.destroy()
     
     dialog.connect("response", on_response)
     dialog.present()
     
-    # Simple modal wait pattern for GTK4
-    context = dialog.get_display().get_default_seat().get_display().get_default()
-    while dialog.get_visible():
-        context.iteration(False)
-        
-    return result
+    # Process events until dialog is closed
+    # Using GLib main context iteration for GTK4
+    from gi.repository import GLib
+    context = GLib.MainContext.default()
+    while not result_container['completed']:
+        context.iteration(may_block=True)
+    
+    return result_container['result']

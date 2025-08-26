@@ -771,12 +771,27 @@ Replace current text with extracted text?"""
     def _handle_profile_change(self, profile_name):
         """Handle profile change and update UI accordingly"""
         try:
+            # Save the current image path and index before updating
+            current_image_path = self.project_manager.current_image_path
+            current_index = self.project_manager.current_index
+            current_directory = self.project_manager.current_directory
+            
             # Update project manager configuration
             self.project_manager.config = self.project_manager._get_config_from_settings()
             
             # Update class configuration and label manager
             self.project_manager.class_config = self.project_manager._parse_class_config()
             self.label_manager = LabelManager(self.project_manager.class_config)
+            
+            # Update canvas with new class configuration
+            if hasattr(self, 'canvas'):
+                self.canvas.class_config = self.project_manager.class_config
+                # Update canvas class colors
+                if hasattr(self.canvas, 'class_colors'):
+                    self.canvas.class_colors = {
+                        i: cls.get("color", [1.0, 0.0, 0.0])
+                        for i, cls in enumerate(self.project_manager.class_config.get("classes", []))
+                    }
             
             # Update validation engine with new classes
             if hasattr(self.project_manager, 'validation_engine'):
@@ -789,14 +804,24 @@ Replace current text with extracted text?"""
             # Refresh UI components with new profile data
             GLib.idle_add(self._refresh_profile_ui)
             
-            # Update default directory if specified and load new directory
+            # Check if we should use a new directory or keep the current one
             new_directory = self.project_manager.settings_manager.get('default_directory')
-            if new_directory and Path(new_directory).exists():
+            
+            # If we have a specific directory for this profile and it exists, use it
+            if new_directory and Path(new_directory).exists() and Path(new_directory) != current_directory:
                 self.project_manager.current_directory = Path(new_directory)
                 # Load directory and refresh file list
                 GLib.idle_add(self._load_directory_and_refresh, new_directory)
+            elif current_directory and current_directory.exists():
+                # Keep the current directory but reload with new profile settings
+                self.project_manager.current_directory = current_directory
+                # Restore the image index
+                self.project_manager.current_index = current_index
+                # Reload current image with new profile's class configuration
+                if current_image_path:
+                    GLib.idle_add(self._reload_current_image_with_new_profile)
             else:
-                # If no directory specified, clear current state
+                # No directory available, clear state
                 GLib.idle_add(self._clear_directory_state)
             
             # Save current profile for next session
@@ -862,6 +887,22 @@ Replace current text with extracted text?"""
             self.project_manager.current_index = -1
             self.project_manager.current_image_path = None
     
+    def _reload_current_image_with_new_profile(self):
+        """Reload the current image with the new profile's class configuration"""
+        try:
+            # Reload the current image
+            if self.project_manager.current_image_path:
+                self.load_current_image()
+                # Update navigation buttons
+                self.update_navigation_buttons()
+                # Update file list if needed
+                self.update_file_list()
+                # Ensure canvas gets focus for immediate interaction
+                if hasattr(self, 'canvas'):
+                    self.canvas.grab_focus()
+        except Exception as e:
+            self.show_error(f"Error reloading image with new profile: {e}")
+    
     def _clear_directory_state(self):
         """Clear directory-related state when no directory is specified"""
         self.project_manager.image_files = []
@@ -871,6 +912,8 @@ Replace current text with extracted text?"""
         # Clear UI elements
         if hasattr(self, 'canvas'):
             self.canvas.clear_image()
+            self.canvas.boxes = []
+            self.canvas.selected_box = None
             self.canvas.queue_draw()
         
         if hasattr(self, 'file_list'):
